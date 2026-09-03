@@ -3,3 +3,5 @@ emails.json
 Email Scraper/pdfs/
 docket_emails.json
 credentials.yaml
+__pycache__/
+*.pyc
