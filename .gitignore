@@ -4,3 +4,4 @@ docket_emails.json
 credentials.yaml
 __pycache__/
 *.pyc
+.DS_Store

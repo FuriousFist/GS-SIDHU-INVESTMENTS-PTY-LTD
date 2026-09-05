@@ -336,42 +336,135 @@ def get_value_same_line(lines, label):
 
 
 # ============================================================
-# GET TOTAL TIME ON SITE
+# GET TIME ON SITE FIELDS
 # ============================================================
 
-def get_total_time_on_site(lines):
+def get_time_on_site_fields(lines):
     """
-    "Total Time on Site (HH:MM)" is printed as two separate lines
-    once pypdf extracts it ("Total Time on" / "Site (HH:MM)"), so
-    get_value_after_label's exact-line match never fires for it.
+    Extracts Arrive Jobsite, Time Finished, and Total Time on Site
+    together, since pypdf's extraction order for this docket section
+    is inconsistent between two layouts:
 
-    The value itself also isn't isolated the same way across docket
-    types - aggregates dockets print it cleanly on its own line
-    ("05:25"), while concrete dockets glue it to the front of the
-    next field's text with unpadded components ("1:42:0 Customer's
-    Name..."). Match only the leading H:M(:S) pattern to handle both.
+      1. Inline: "Arrive Jobsite 08:12 Batch + Moisture" - the value
+         sits on the same line as its label (Total Time on Site is
+         never inline - its label alone spans two lines: "Total Time
+         on" / "Site (HH:MM)").
+      2. Block: "Arrive Jobsite" / "Time Finished" / "Total Time on"
+         / "Site (HH:MM)" print as bare labels, and only afterwards
+         do "08:14" / "08:22" / "0:8:0" print as a separate block of
+         values, in the same order as their labels.
+
+    A fixed line offset only handles one of these - whichever labels
+    lack an inline value are resolved by scanning forward from the
+    last label for a run of time-like values and assigning them in
+    label order.
+    """
+
+    result = {
+        "arrive_jobsite": None,
+        "time_finished": None,
+        "total_time_on_site": None
+    }
+
+    anchors = []
+
+    for i, line in enumerate(lines):
+
+        stripped = line.strip()
+        lower = stripped.lower()
+
+        if (
+            lower.startswith("arrive jobsite")
+            and not any(key == "arrive_jobsite" for key, *_ in anchors)
+        ):
+            rest = stripped[len("Arrive Jobsite"):].strip()
+            inline_match = re.match(r"(\d{1,2}:\d{2})\b", rest)
+
+            anchors.append((
+                "arrive_jobsite",
+                i,
+                inline_match.group(1) if inline_match else None
+            ))
+
+        elif (
+            lower.startswith("time finished")
+            and not any(key == "time_finished" for key, *_ in anchors)
+        ):
+            rest = stripped[len("Time Finished"):].strip()
+            inline_match = re.match(r"(\d{1,2}:\d{2})\b", rest)
+
+            anchors.append((
+                "time_finished",
+                i,
+                inline_match.group(1) if inline_match else None
+            ))
+
+        elif (
+            stripped == "Total Time on"
+            and not any(key == "total_time_on_site" for key, *_ in anchors)
+            and i + 1 < len(lines)
+            and lines[i + 1].strip().startswith("Site (HH:MM)")
+        ):
+            anchors.append((
+                "total_time_on_site",
+                i + 1,
+                None
+            ))
+
+    for key, _, inline_value in anchors:
+
+        if inline_value is not None:
+            result[key] = inline_value
+
+    missing = [
+        (key, end_idx)
+        for key, end_idx, inline_value in anchors
+        if inline_value is None
+    ]
+
+    if missing:
+
+        scan_start = max(end_idx for _, end_idx, _ in anchors) + 1
+        found_values = []
+        j = scan_start
+
+        while j < len(lines) and len(found_values) < len(missing):
+
+            match = re.match(
+                r"(\d{1,3}:\d{1,2}(?::\d{1,2})?)",
+                lines[j].strip()
+            )
+
+            if not match:
+                break
+
+            found_values.append(match.group(1))
+            j += 1
+
+        for (key, _), value in zip(missing, found_values):
+            result[key] = value
+
+    return result
+
+
+# ============================================================
+# GET NET WEIGHT
+# ============================================================
+
+def get_net_weight(lines):
+    """
+    Aggregates dockets print "Net Weight" as "This" / "load/NetWeight"
+    across two lines (or "This load" / "/NetWeight" in the pricing
+    section) - no space before "Weight" and no line matching the
+    plain "Net Weight" label get_value_after_label expects.
     """
 
     for i, line in enumerate(lines):
 
-        if line.strip() != "Total Time on":
-            continue
+        if line.strip().lower().endswith("netweight"):
 
-        if (
-            i + 1 >= len(lines)
-            or not lines[i + 1].strip().startswith("Site (HH:MM)")
-        ):
-            continue
-
-        if i + 2 >= len(lines):
-            return None
-
-        match = re.match(
-            r"(\d{1,3}:\d{1,2}(?::\d{1,2})?)",
-            lines[i + 2].strip()
-        )
-
-        return match.group(1) if match else None
+            if i + 1 < len(lines):
+                return lines[i + 1].strip()
 
     return None
 
@@ -426,7 +519,11 @@ def normalize_date(value):
         "%d-%m-%y",
         "%Y-%m-%d",
         "%d %b %Y",
-        "%d %B %Y"
+        "%d %B %Y",
+        "%d-%b-%Y",
+        "%d-%b-%y",
+        "%d-%B-%Y",
+        "%d-%B-%y"
     ]
 
     for date_format in formats:
@@ -506,6 +603,38 @@ def combine_date_time(date_value, time_value):
 
 
 # ============================================================
+# TIME DIFFERENCE (HH:MM STRINGS -> H:M:S DURATION)
+# ============================================================
+
+def time_diff_hms(start_value, end_value):
+    """
+    Duration between two same-day "HH:MM" clock times, as an "H:M:S"
+    string for normalize_interval. Used where a docket prints arrival
+    and finish times but no separate total-time-on-site figure (e.g.
+    Barro), so the site duration has to be computed rather than read.
+    """
+
+    start_time = normalize_time(start_value)
+    end_time = normalize_time(end_value)
+
+    if not start_time or not end_time:
+        return None
+
+    start_dt = datetime.strptime(start_time, "%H:%M:%S")
+    end_dt = datetime.strptime(end_time, "%H:%M:%S")
+
+    if end_dt < start_dt:
+        return None
+
+    seconds = int((end_dt - start_dt).total_seconds())
+
+    hours, remainder = divmod(seconds, 3600)
+    minutes, secs = divmod(remainder, 60)
+
+    return f"{hours}:{minutes}:{secs}"
+
+
+# ============================================================
 # NORMALIZE INTERVAL
 # ============================================================
 
@@ -540,6 +669,8 @@ def normalize_interval(value):
 # ============================================================
 
 def parse_concrete_docket(lines):
+
+    time_on_site_fields = get_time_on_site_fields(lines)
 
     docket = {
 
@@ -643,19 +774,11 @@ def parse_concrete_docket(lines):
             "Mix Description"
         ),
 
-        "arrive_jobsite": get_value_after_label(
-            lines,
-            "Arrive Jobsite"
-        ),
+        "arrive_jobsite": time_on_site_fields["arrive_jobsite"],
 
-        "time_finished": get_value_after_label(
-            lines,
-            "Time Finished"
-        ),
+        "time_finished": time_on_site_fields["time_finished"],
 
-        "total_time_on_site": get_total_time_on_site(
-            lines
-        ),
+        "total_time_on_site": time_on_site_fields["total_time_on_site"],
 
         "water_added": extract_number(
             get_value_after_label(
@@ -699,6 +822,8 @@ def parse_concrete_docket(lines):
 # ============================================================
 
 def parse_aggregates_docket(lines):
+
+    time_on_site_fields = get_time_on_site_fields(lines)
 
     docket = {
 
@@ -776,9 +901,8 @@ def parse_aggregates_docket(lines):
         ),
 
         "net_weight": extract_number(
-            get_value_after_label(
-                lines,
-                "Net Weight"
+            get_net_weight(
+                lines
             )
         ),
 
@@ -804,29 +928,33 @@ def parse_aggregates_docket(lines):
             )
         ),
 
-        "material_code": get_value_after_label(
-            lines,
-            "Material Code"
+        "material_code": (
+            get_value_after_label(
+                lines,
+                "Primary Material Code"
+            )
+            or get_value_after_label(
+                lines,
+                "Material Code"
+            )
         ),
 
-        "product": get_value_after_label(
-            lines,
-            "Product"
+        "product": (
+            get_value_after_label(
+                lines,
+                "Product Description"
+            )
+            or get_value_after_label(
+                lines,
+                "Product"
+            )
         ),
 
-        "arrive_jobsite": get_value_after_label(
-            lines,
-            "Arrive Jobsite"
-        ),
+        "arrive_jobsite": time_on_site_fields["arrive_jobsite"],
 
-        "time_finished": get_value_after_label(
-            lines,
-            "Time Finished"
-        ),
+        "time_finished": time_on_site_fields["time_finished"],
 
-        "total_time_on_site": get_total_time_on_site(
-            lines
-        )
+        "total_time_on_site": time_on_site_fields["total_time_on_site"]
     }
 
     return docket
@@ -1053,6 +1181,13 @@ def parse_barro_docket(text):
         docket["time_dispatched"] = row_match.group(2)
         docket["arrive_jobsite"] = row_match.group(3)
         docket["time_finished"] = row_match.group(5)
+
+        # Barro's docket has no printed "total time on site" figure
+        # (unlike Holcim's) - compute it from arrival to finish.
+        docket["total_time_on_site"] = time_diff_hms(
+            row_match.group(3),
+            row_match.group(5)
+        )
 
     # --------------------------------------------------------
     # TRUCK NO / DRIVER NO
@@ -1668,7 +1803,7 @@ def insert_docket_load(
                 "net_weight"
             ),
 
-            "unit": "kg",
+            "unit": "tonnes",
 
             "gross_weight": docket_data.get(
                 "gross_weight"
