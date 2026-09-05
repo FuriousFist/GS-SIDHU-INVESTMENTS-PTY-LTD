@@ -20,7 +20,7 @@ from supabase import create_client
 # SETTINGS
 # ============================================================
 
-DAYS_TO_SEARCH = 1
+DAYS_TO_SEARCH = int(os.environ.get("DAYS_TO_SEARCH", 1))
 
 EMAILS_FILE = "Email Scraper/emails.json"
 OUTPUT_FILE = "Email Scraper/docket_emails.json"
@@ -336,6 +336,47 @@ def get_value_same_line(lines, label):
 
 
 # ============================================================
+# GET TOTAL TIME ON SITE
+# ============================================================
+
+def get_total_time_on_site(lines):
+    """
+    "Total Time on Site (HH:MM)" is printed as two separate lines
+    once pypdf extracts it ("Total Time on" / "Site (HH:MM)"), so
+    get_value_after_label's exact-line match never fires for it.
+
+    The value itself also isn't isolated the same way across docket
+    types - aggregates dockets print it cleanly on its own line
+    ("05:25"), while concrete dockets glue it to the front of the
+    next field's text with unpadded components ("1:42:0 Customer's
+    Name..."). Match only the leading H:M(:S) pattern to handle both.
+    """
+
+    for i, line in enumerate(lines):
+
+        if line.strip() != "Total Time on":
+            continue
+
+        if (
+            i + 1 >= len(lines)
+            or not lines[i + 1].strip().startswith("Site (HH:MM)")
+        ):
+            continue
+
+        if i + 2 >= len(lines):
+            return None
+
+        match = re.match(
+            r"(\d{1,3}:\d{1,2}(?::\d{1,2})?)",
+            lines[i + 2].strip()
+        )
+
+        return match.group(1) if match else None
+
+    return None
+
+
+# ============================================================
 # EXTRACT NUMBER
 # ============================================================
 
@@ -476,7 +517,7 @@ def normalize_interval(value):
     value = value.strip()
 
     match = re.match(
-        r"^(\d{1,3}):(\d{2})(?::(\d{2}))?$",
+        r"^(\d{1,3}):(\d{1,2})(?::(\d{1,2}))?",
         value
     )
 
@@ -612,9 +653,8 @@ def parse_concrete_docket(lines):
             "Time Finished"
         ),
 
-        "total_time_on_site": get_value_after_label(
-            lines,
-            "Total Time on Site (HH:MM)"
+        "total_time_on_site": get_total_time_on_site(
+            lines
         ),
 
         "water_added": extract_number(
@@ -784,9 +824,8 @@ def parse_aggregates_docket(lines):
             "Time Finished"
         ),
 
-        "total_time_on_site": get_value_after_label(
-            lines,
-            "Total Time on Site (HH:MM)"
+        "total_time_on_site": get_total_time_on_site(
+            lines
         )
     }
 
@@ -1044,6 +1083,22 @@ def parse_barro_docket(text):
             docket["driver_no"] = (
                 driver_match.group(1) if driver_match else None
             )
+
+    # --------------------------------------------------------
+    # WAITING TIME (minutes)
+    # --------------------------------------------------------
+
+    waiting_time_match = re.search(
+        r"WAITING TIME\s+(\d+)\s*mins?",
+        text,
+        re.IGNORECASE
+    )
+
+    if waiting_time_match:
+
+        minutes = int(waiting_time_match.group(1))
+
+        docket["waiting_time"] = f"0:{minutes}:0"
 
     # --------------------------------------------------------
     # QUANTITY DELIVERED / PROGRESSIVE TOTAL - two M3 values on one line
@@ -1456,6 +1511,12 @@ def insert_docket(
         )
     )
 
+    waiting_time = normalize_interval(
+        docket_data.get(
+            "waiting_time"
+        )
+    )
+
     docket = {
 
         "docket_number": docket_data.get(
@@ -1517,6 +1578,8 @@ def insert_docket(
         "time_finished": time_finished,
 
         "total_time_on_site": total_time_on_site,
+
+        "waiting_time": waiting_time,
 
         "truck_id": truck_id,
 
