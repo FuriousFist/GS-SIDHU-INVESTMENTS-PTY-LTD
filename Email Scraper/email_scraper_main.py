@@ -825,6 +825,17 @@ def parse_aggregates_docket(lines):
 
     time_on_site_fields = get_time_on_site_fields(lines)
 
+    # "Customer Purchase Order No." has no printed placeholder when left
+    # blank, so get_value_after_label falls through to the next field's
+    # label ("Total Order" / "Weight") instead of a real value.
+    purchase_order = get_value_after_label(
+        lines,
+        "Customer Purchase Order No."
+    )
+
+    if purchase_order == "Total Order":
+        purchase_order = None
+
     docket = {
 
         "docket_type": "aggregates",
@@ -874,10 +885,7 @@ def parse_aggregates_docket(lines):
             "Delivery Address & Instructions"
         ),
 
-        "purchase_order": get_value_after_label(
-            lines,
-            "Customer Purchase Order No."
-        ),
+        "purchase_order": purchase_order,
 
         "total_weight": extract_number(
             get_value_after_label(
