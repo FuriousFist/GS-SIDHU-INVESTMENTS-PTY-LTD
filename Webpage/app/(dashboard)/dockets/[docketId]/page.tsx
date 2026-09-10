@@ -34,7 +34,7 @@ export default async function DocketDetailPage({
     <div>
       <BackLink fallbackHref="/dockets">&larr; Back</BackLink>
 
-      <div className="mt-2 flex items-start justify-between">
+      <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
         <h1 className="text-2xl font-semibold text-neutral-900">
           Docket {docket.docket_number}
         </h1>
@@ -50,7 +50,7 @@ export default async function DocketDetailPage({
         )}
       </div>
 
-      <dl className="mt-6 grid grid-cols-2 gap-4 rounded-lg border border-neutral-200 bg-white p-6 sm:grid-cols-3">
+      <dl className="mt-6 grid grid-cols-2 gap-4 rounded-lg border border-neutral-200 bg-white p-4 sm:grid-cols-3 sm:p-6">
         <Field label="Date" value={formatDate(docket.docket_date)} />
         <Field label="Type" value={docket.docket_type} />
         <Field label="Customer" value={docket.customer_name} />
