@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { logout } from "@/app/actions/auth";
 
 const NAV_ITEMS = [
@@ -20,9 +20,14 @@ export function Sidebar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
-  useEffect(() => {
+  // Close the mobile nav on route change - adjusted during render (the
+  // React-recommended pattern for resetting state from a prop change)
+  // rather than in an effect, which would cause an extra render pass.
+  const [prevPathname, setPrevPathname] = useState(pathname);
+  if (pathname !== prevPathname) {
+    setPrevPathname(pathname);
     setOpen(false);
-  }, [pathname]);
+  }
 
   return (
     <>

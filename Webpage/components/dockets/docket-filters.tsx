@@ -15,10 +15,14 @@ export function DocketFilters({
       className="mb-4 flex flex-wrap items-end gap-3 rounded-lg border border-neutral-200 bg-white p-4"
     >
       <div>
-        <label className="mb-1 block text-xs font-medium text-neutral-600">
+        <label
+          htmlFor="docket-filters-from"
+          className="mb-1 block text-xs font-medium text-neutral-600"
+        >
           From
         </label>
         <input
+          id="docket-filters-from"
           type="date"
           name="from"
           defaultValue={from}
@@ -27,10 +31,14 @@ export function DocketFilters({
       </div>
 
       <div>
-        <label className="mb-1 block text-xs font-medium text-neutral-600">
+        <label
+          htmlFor="docket-filters-to"
+          className="mb-1 block text-xs font-medium text-neutral-600"
+        >
           To
         </label>
         <input
+          id="docket-filters-to"
           type="date"
           name="to"
           defaultValue={to}
@@ -39,10 +47,14 @@ export function DocketFilters({
       </div>
 
       <div>
-        <label className="mb-1 block text-xs font-medium text-neutral-600">
+        <label
+          htmlFor="docket-filters-type"
+          className="mb-1 block text-xs font-medium text-neutral-600"
+        >
           Type
         </label>
         <select
+          id="docket-filters-type"
           name="type"
           defaultValue={docketType ?? ""}
           className="rounded-md border border-neutral-300 px-2 py-1.5 text-sm"
@@ -54,10 +66,14 @@ export function DocketFilters({
       </div>
 
       <div className="flex-1 min-w-[180px]">
-        <label className="mb-1 block text-xs font-medium text-neutral-600">
+        <label
+          htmlFor="docket-filters-search"
+          className="mb-1 block text-xs font-medium text-neutral-600"
+        >
           Search (docket # or customer)
         </label>
         <input
+          id="docket-filters-search"
           type="text"
           name="q"
           defaultValue={search ?? ""}
