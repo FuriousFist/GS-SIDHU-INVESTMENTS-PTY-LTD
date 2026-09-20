@@ -65,3 +65,37 @@ describe("Sidebar", () => {
     );
   });
 });
+
+describe("Sidebar companies link and alert badge", () => {
+  test("includes a Companies link after Trucks", () => {
+    usePathname.mockReturnValue("/");
+
+    render(<Sidebar />);
+
+    const labels = screen
+      .getAllByRole("link")
+      .map((link) => link.textContent?.trim());
+    expect(labels.indexOf("Companies")).toBe(labels.indexOf("Trucks") + 1);
+    expect(screen.getByRole("link", { name: "Companies" })).toHaveAttribute(
+      "href",
+      "/companies"
+    );
+  });
+
+  test("shows a red badge only when alertCount > 0", () => {
+    usePathname.mockReturnValue("/");
+
+    const { rerender } = render(<Sidebar alertCount={0} />);
+    expect(
+      screen.queryByLabelText(/documents expiring or expired/)
+    ).not.toBeInTheDocument();
+
+    rerender(<Sidebar alertCount={3} />);
+    const badge = screen.getByLabelText("3 documents expiring or expired");
+    expect(badge).toHaveTextContent("3");
+    expect(badge).toHaveClass("bg-red-600", "text-white");
+    expect(screen.getByRole("link", { name: /Companies/ })).toContainElement(
+      badge
+    );
+  });
+});
