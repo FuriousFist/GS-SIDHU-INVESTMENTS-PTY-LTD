@@ -1,3 +1,5 @@
+import { FilterInput } from "@/components/ui/filter-input";
+
 export function DateRangeFilter({ from, to }: { from: string; to: string }) {
   return (
     <form
@@ -11,12 +13,11 @@ export function DateRangeFilter({ from, to }: { from: string; to: string }) {
         >
           From
         </label>
-        <input
+        <FilterInput
           id="date-range-from"
           type="date"
           name="from"
           defaultValue={from}
-          className="rounded-md border border-neutral-300 px-2 py-1.5 text-sm"
         />
       </div>
 
@@ -27,12 +28,11 @@ export function DateRangeFilter({ from, to }: { from: string; to: string }) {
         >
           To
         </label>
-        <input
+        <FilterInput
           id="date-range-to"
           type="date"
           name="to"
           defaultValue={to}
-          className="rounded-md border border-neutral-300 px-2 py-1.5 text-sm"
         />
       </div>
 

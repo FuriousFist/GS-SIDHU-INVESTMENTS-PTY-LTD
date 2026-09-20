@@ -1,3 +1,5 @@
+import { FilterInput, FilterSelect } from "@/components/ui/filter-input";
+
 export function DocketFilters({
   from,
   to,
@@ -21,12 +23,11 @@ export function DocketFilters({
         >
           From
         </label>
-        <input
+        <FilterInput
           id="docket-filters-from"
           type="date"
           name="from"
           defaultValue={from}
-          className="rounded-md border border-neutral-300 px-2 py-1.5 text-sm"
         />
       </div>
 
@@ -37,12 +38,11 @@ export function DocketFilters({
         >
           To
         </label>
-        <input
+        <FilterInput
           id="docket-filters-to"
           type="date"
           name="to"
           defaultValue={to}
-          className="rounded-md border border-neutral-300 px-2 py-1.5 text-sm"
         />
       </div>
 
@@ -53,16 +53,15 @@ export function DocketFilters({
         >
           Type
         </label>
-        <select
+        <FilterSelect
           id="docket-filters-type"
           name="type"
           defaultValue={docketType ?? ""}
-          className="rounded-md border border-neutral-300 px-2 py-1.5 text-sm"
         >
           <option value="">All</option>
           <option value="concrete">Concrete</option>
           <option value="aggregates">Aggregates</option>
-        </select>
+        </FilterSelect>
       </div>
 
       <div className="flex-1 min-w-[180px]">
@@ -72,13 +71,13 @@ export function DocketFilters({
         >
           Search (docket # or customer)
         </label>
-        <input
+        <FilterInput
           id="docket-filters-search"
           type="text"
           name="q"
           defaultValue={search ?? ""}
           placeholder="e.g. 13156202 or Winslow"
-          className="w-full rounded-md border border-neutral-300 px-2 py-1.5 text-sm"
+          className="w-full"
         />
       </div>
 
