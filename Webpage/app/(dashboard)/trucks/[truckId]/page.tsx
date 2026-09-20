@@ -82,7 +82,11 @@ export default async function TruckDetailPage({
       </p>
 
       <div className="mt-4">
-        <DateRangeFilter from={from} to={to} />
+        <DateRangeFilter
+          from={from}
+          to={to}
+          pathname={`/trucks/${truckId}`}
+        />
       </div>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">

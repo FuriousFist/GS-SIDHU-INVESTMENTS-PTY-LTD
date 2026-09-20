@@ -32,7 +32,7 @@ export default async function TurnaroundPage({
       </p>
 
       <div className="mt-4">
-        <DateRangeFilter from={from} to={to} />
+        <DateRangeFilter from={from} to={to} pathname="/turnaround" />
       </div>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">

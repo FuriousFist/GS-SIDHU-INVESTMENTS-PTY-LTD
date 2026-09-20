@@ -53,6 +53,7 @@ export default async function DocketsPage({
           to={to}
           docketType={docketType}
           search={search}
+          pathname="/dockets"
         />
       </div>
 

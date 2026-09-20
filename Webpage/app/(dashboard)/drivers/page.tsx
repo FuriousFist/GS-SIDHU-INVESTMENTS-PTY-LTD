@@ -21,7 +21,7 @@ export default async function DriversPage({
       </p>
 
       <div className="mt-4">
-        <DateRangeFilter from={from} to={to} />
+        <DateRangeFilter from={from} to={to} pathname="/drivers" />
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-white">

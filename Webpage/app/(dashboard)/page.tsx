@@ -30,7 +30,7 @@ export default async function OverviewPage({
       </p>
 
       <div className="mt-4">
-        <DateRangeFilter from={from} to={to} />
+        <DateRangeFilter from={from} to={to} pathname="/" />
       </div>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">

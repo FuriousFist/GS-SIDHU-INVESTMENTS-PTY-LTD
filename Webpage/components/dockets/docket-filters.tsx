@@ -1,19 +1,26 @@
+import Form from "next/form";
+import { ApplyButton } from "@/components/ui/apply-button";
 import { FilterInput, FilterSelect } from "@/components/ui/filter-input";
 
+// `pathname` is the route to submit to (the page's own path). next/form
+// turns the submit into a client-side navigation with the fields encoded
+// as search params, so the route's loading.tsx shows while data loads.
 export function DocketFilters({
   from,
   to,
   docketType,
   search,
+  pathname,
 }: {
   from: string;
   to: string;
   docketType?: string;
   search?: string;
+  pathname: string;
 }) {
   return (
-    <form
-      method="GET"
+    <Form
+      action={pathname}
       className="mb-4 flex flex-wrap items-end gap-3 rounded-lg border border-neutral-200 bg-white p-4"
     >
       <div>
@@ -81,12 +88,7 @@ export function DocketFilters({
         />
       </div>
 
-      <button
-        type="submit"
-        className="rounded-md bg-neutral-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-neutral-800"
-      >
-        Apply
-      </button>
-    </form>
+      <ApplyButton />
+    </Form>
   );
 }

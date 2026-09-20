@@ -26,7 +26,7 @@ export default async function TrendsPage({
       </p>
 
       <div className="mt-4">
-        <DateRangeFilter from={from} to={to} />
+        <DateRangeFilter from={from} to={to} pathname="/trends" />
       </div>
 
       {!hasData ? (

@@ -20,7 +20,7 @@ export default async function TrucksPage({
       </p>
 
       <div className="mt-4">
-        <DateRangeFilter from={from} to={to} />
+        <DateRangeFilter from={from} to={to} pathname="/trucks" />
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-white">
