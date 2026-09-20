@@ -68,7 +68,7 @@ export default async function DocketsPage({
             {page > 1 && (
               <Link
                 href={pageHref(page - 1)}
-                className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100"
+                className="rounded-md border border-neutral-300 px-3 py-1.5 transition-colors hover:bg-neutral-100 active:scale-[0.98] active:bg-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
               >
                 Previous
               </Link>
@@ -76,7 +76,7 @@ export default async function DocketsPage({
             {page < totalPages && (
               <Link
                 href={pageHref(page + 1)}
-                className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100"
+                className="rounded-md border border-neutral-300 px-3 py-1.5 transition-colors hover:bg-neutral-100 active:scale-[0.98] active:bg-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
               >
                 Next
               </Link>
