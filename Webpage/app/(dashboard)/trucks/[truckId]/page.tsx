@@ -1,24 +1,48 @@
+import Link from "next/link";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { resolveDateRange, type SearchParams } from "@/lib/utils/date-range";
-import { getTruckDockets } from "@/lib/queries/trucks";
+import { getTruckCompliance, getTruckDockets } from "@/lib/queries/trucks";
 import { DateRangeFilter } from "@/components/date-range-filter";
 import { StatTile } from "@/components/stat-tile";
 import { DocketTable } from "@/components/dockets/docket-table";
 import { BackLink } from "@/components/back-link";
+import { DocumentTable } from "@/components/documents/document-table";
+import { TrailerCard } from "@/components/trucks/trailer-card";
+import { TruckDetailsCard } from "@/components/trucks/truck-details-card";
 import {
   formatDate,
   formatMinutes,
   parseIntervalMinutes,
 } from "@/lib/utils/format";
-import { TruckHeadingSkeleton, TruckResultsSkeleton } from "./loading";
+import {
+  TruckDocumentsSkeleton,
+  TruckHeadingSkeleton,
+  TruckResultsSkeleton,
+} from "./loading";
 
 // null when the truck doesn't exist (or the query failed).
 type TruckResult = Awaited<ReturnType<typeof getTruckDockets>> | null;
+type ComplianceResult = Awaited<ReturnType<typeof getTruckCompliance>> | null;
+
+type CameFrom = { href: string; companyId: string } | null;
 
 function average(values: number[]) {
   if (values.length === 0) return null;
   return values.reduce((sum, v) => sum + v, 0) / values.length;
+}
+
+function firstParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+// Only a company page is accepted as a "from" target, so the back link
+// can't be pointed anywhere else via the URL.
+const COMPANY_PATH = /^\/companies\/([0-9a-f-]{36})$/i;
+
+function resolveFrom(value: string | undefined): CameFrom {
+  const match = value ? COMPANY_PATH.exec(value) : null;
+  return match ? { href: value!, companyId: match[1] } : null;
 }
 
 export default async function TruckDetailPage({
@@ -29,21 +53,31 @@ export default async function TruckDetailPage({
   searchParams: Promise<SearchParams>;
 }) {
   const { truckId } = await params;
-  const { from, to } = resolveDateRange(await searchParams);
+  const search = await searchParams;
+  const { from, to } = resolveDateRange(search);
+  const cameFrom = resolveFrom(firstParam(search.from));
+  const docsTab = firstParam(search.docs) === "trailer" ? "trailer" : "truck";
 
   // One query shared by the heading and the stats/table below the filters.
   const result: Promise<TruckResult> = getTruckDockets(truckId, from, to).catch(
     () => null
   );
+  // Companies, trailer and document checklists - shared by the details
+  // card in the heading and the Documents section.
+  const compliance: Promise<ComplianceResult> = result
+    .then((data) => (data ? getTruckCompliance(data.truck) : null))
+    .catch(() => null);
 
   return (
     <div>
-      <BackLink fallbackHref="/trucks">&larr; Back</BackLink>
-
       {/* The heading only depends on the truck, so it keeps its key (and
           stays on screen) across filter changes. */}
       <Suspense key={truckId} fallback={<TruckHeadingSkeleton />}>
-        <TruckHeading result={result} />
+        <TruckHeading
+          result={result}
+          compliance={compliance}
+          cameFrom={cameFrom}
+        />
       </Suspense>
 
       <div className="mt-4">
@@ -63,18 +97,51 @@ export default async function TruckDetailPage({
       >
         <TruckResults result={result} />
       </Suspense>
+
+      <h2 className="mt-8 mb-2 text-lg font-semibold text-neutral-900">
+        Documents
+      </h2>
+      <Suspense
+        key={`${truckId}:${docsTab}`}
+        fallback={<TruckDocumentsSkeleton />}
+      >
+        <TruckDocuments
+          result={result}
+          compliance={compliance}
+          docsTab={docsTab}
+          cameFrom={cameFrom}
+        />
+      </Suspense>
     </div>
   );
 }
 
-async function TruckHeading({ result }: { result: Promise<TruckResult> }) {
+async function TruckHeading({
+  result,
+  compliance,
+  cameFrom,
+}: {
+  result: Promise<TruckResult>;
+  compliance: Promise<ComplianceResult>;
+  cameFrom: CameFrom;
+}) {
   const data = await result;
   if (!data) notFound();
 
   const { truck } = data;
+  const details = await compliance;
+
+  const backToCompany =
+    cameFrom && details?.company?.id === cameFrom.companyId
+      ? details.company
+      : null;
 
   return (
     <>
+      <BackLink fallbackHref={cameFrom?.href ?? "/trucks"}>
+        &larr; Back{backToCompany ? ` to ${backToCompany.name}` : ""}
+      </BackLink>
+
       <h1 className="mt-2 text-2xl font-semibold text-neutral-900">
         Truck {truck.truck_number}
       </h1>
@@ -83,6 +150,10 @@ async function TruckHeading({ result }: { result: Promise<TruckResult> }) {
         {truck.registration ?? "No registration on file"} &middot;{" "}
         {truck.active ? "Active" : "Inactive"}
       </p>
+
+      <div className="mt-4">
+        <TruckDetailsCard truck={truck} companies={details?.companies ?? []} />
+      </div>
     </>
   );
 }
@@ -165,6 +236,91 @@ async function TruckResults({ result }: { result: Promise<TruckResult> }) {
         Dockets
       </h2>
       <DocketTable dockets={dockets} />
+    </>
+  );
+}
+
+async function TruckDocuments({
+  result,
+  compliance,
+  docsTab,
+  cameFrom,
+}: {
+  result: Promise<TruckResult>;
+  compliance: Promise<ComplianceResult>;
+  docsTab: "truck" | "trailer";
+  cameFrom: CameFrom;
+}) {
+  const data = await result;
+  if (!data) notFound();
+
+  const { truck } = data;
+  const details = await compliance;
+
+  if (!details) {
+    return (
+      <p className="rounded-lg border border-neutral-200 bg-white p-6 text-center text-sm text-neutral-500">
+        Documents are unavailable right now.
+      </p>
+    );
+  }
+
+  const truckOwner = { scope: "truck" as const, ownerId: truck.id };
+
+  if (truck.truck_type !== "tipper") {
+    return (
+      <DocumentTable
+        slots={details.truckDocuments}
+        owner={truckOwner}
+        emptyMessage={
+          details.company || truck.company
+            ? "No document types are configured for this truck."
+            : "Link this truck to a company to see its document checklist."
+        }
+      />
+    );
+  }
+
+  return (
+    <>
+      <nav
+        aria-label="Document sections"
+        className="mb-3 flex gap-1 border-b border-neutral-200"
+      >
+        {(["truck", "trailer"] as const).map((section) => {
+          const active = section === docsTab;
+          const query = new URLSearchParams();
+          if (cameFrom) query.set("from", cameFrom.href);
+          query.set("docs", section);
+          return (
+            <Link
+              key={section}
+              href={`/trucks/${truck.id}?${query.toString()}`}
+              aria-current={active ? "page" : undefined}
+              className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium capitalize ${
+                active
+                  ? "border-neutral-900 text-neutral-900"
+                  : "border-transparent text-neutral-500 hover:text-neutral-800"
+              }`}
+            >
+              {section}
+            </Link>
+          );
+        })}
+      </nav>
+      {docsTab === "trailer" ? (
+        <div className="space-y-3">
+          <TrailerCard truckId={truck.id} trailer={details.trailer} />
+          {details.trailer && (
+            <DocumentTable
+              slots={details.trailerDocuments}
+              owner={{ scope: "trailer", ownerId: details.trailer.id }}
+            />
+          )}
+        </div>
+      ) : (
+        <DocumentTable slots={details.truckDocuments} owner={truckOwner} />
+      )}
     </>
   );
 }

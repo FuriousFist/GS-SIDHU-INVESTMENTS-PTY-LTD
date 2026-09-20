@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { href: "/", label: "Overview" },
   { href: "/dockets", label: "Dockets" },
   { href: "/trucks", label: "Trucks" },
+  { href: "/companies", label: "Companies" },
   { href: "/trends", label: "Trends" },
   { href: "/turnaround", label: "Turnaround" },
   { href: "/drivers", label: "Drivers" },
@@ -34,7 +35,7 @@ function NavPendingIndicator() {
   );
 }
 
-export function Sidebar() {
+export function Sidebar({ alertCount = 0 }: { alertCount?: number }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
@@ -138,6 +139,14 @@ export function Sidebar() {
                 }`}
               >
                 {item.label}
+                {item.href === "/companies" && alertCount > 0 && (
+                  <span
+                    className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 py-0.5 text-xs font-semibold leading-none text-white"
+                    aria-label={`${alertCount} documents expiring or expired`}
+                  >
+                    {alertCount}
+                  </span>
+                )}
                 <NavPendingIndicator />
               </Link>
             );
