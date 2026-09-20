@@ -38,6 +38,9 @@ export function makeQueryBuilder(result: QueryResult) {
     "order",
     "range",
     "limit",
+    "upsert",
+    "is",
+    "not",
   ];
 
   for (const method of chainMethods) {
@@ -47,6 +50,7 @@ export function makeQueryBuilder(result: QueryResult) {
   // .single() narrows the result shape in real supabase-js, but for a
   // test double returning the same configured result is enough.
   builder.single = vi.fn(() => builder);
+  builder.maybeSingle = vi.fn(() => builder);
 
   builder.then = (
     onFulfilled?: (value: QueryResult) => unknown,
