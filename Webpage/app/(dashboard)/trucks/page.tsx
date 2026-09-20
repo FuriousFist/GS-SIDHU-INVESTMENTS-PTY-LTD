@@ -1,7 +1,9 @@
+import { Suspense } from "react";
 import { resolveDateRange, type SearchParams } from "@/lib/utils/date-range";
 import { getTruckSummary } from "@/lib/queries/trucks";
 import { DateRangeFilter } from "@/components/date-range-filter";
 import { TruckRow } from "@/components/trucks/truck-row";
+import { TrucksResultsSkeleton } from "./loading";
 
 export default async function TrucksPage({
   searchParams,
@@ -10,7 +12,6 @@ export default async function TrucksPage({
 }) {
   const params = await searchParams;
   const { from, to } = resolveDateRange(params);
-  const trucks = await getTruckSummary(from, to);
 
   return (
     <div>
@@ -23,30 +24,43 @@ export default async function TrucksPage({
         <DateRangeFilter from={from} to={to} pathname="/trucks" />
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-white">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-neutral-200 text-left text-xs font-medium uppercase text-neutral-500">
-              <th className="px-4 py-3">Truck</th>
-              <th className="px-4 py-3">Company</th>
-              <th className="px-4 py-3 text-right">Dockets</th>
-              <th className="px-4 py-3 text-right">Concrete (m³)</th>
-              <th className="px-4 py-3 text-right">Aggregates (t)</th>
-              <th className="px-4 py-3">Last active</th>
-            </tr>
-          </thead>
-          <tbody>
-            {trucks.map((truck) => (
-              <TruckRow
-                key={truck.truck_id ?? "unassigned"}
-                truck={truck}
-                from={from}
-                to={to}
-              />
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {/* Keyed on the filters so a filter change mounts a fresh boundary and
+          shows the skeleton, rather than holding the stale results on screen
+          until the new data arrives (loading.tsx only covers route changes). */}
+      <Suspense key={`${from}:${to}`} fallback={<TrucksResultsSkeleton />}>
+        <TruckResults from={from} to={to} />
+      </Suspense>
+    </div>
+  );
+}
+
+async function TruckResults({ from, to }: { from: string; to: string }) {
+  const trucks = await getTruckSummary(from, to);
+
+  return (
+    <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-white">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-neutral-200 text-left text-xs font-medium uppercase text-neutral-500">
+            <th className="px-4 py-3">Truck</th>
+            <th className="px-4 py-3">Company</th>
+            <th className="px-4 py-3 text-right">Dockets</th>
+            <th className="px-4 py-3 text-right">Concrete (m³)</th>
+            <th className="px-4 py-3 text-right">Aggregates (t)</th>
+            <th className="px-4 py-3">Last active</th>
+          </tr>
+        </thead>
+        <tbody>
+          {trucks.map((truck) => (
+            <TruckRow
+              key={truck.truck_id ?? "unassigned"}
+              truck={truck}
+              from={from}
+              to={to}
+            />
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

@@ -5,18 +5,11 @@ import {
   TableSkeleton,
 } from "@/components/ui/skeleton";
 
-export default function TurnaroundLoading() {
+// The stats, histogram and table below the filter bar; also the fallback
+// page.tsx shows while a filter change is loading.
+export function TurnaroundResultsSkeleton() {
   return (
-    <div aria-busy="true" aria-label="Loading turnaround">
-      <h1 className="text-2xl font-semibold text-neutral-900">Turnaround</h1>
-      <p className="mt-1 text-sm text-neutral-500">
-        Time on site and waiting time for the selected date range
-      </p>
-
-      <div className="mt-4">
-        <FilterBarSkeleton />
-      </div>
-
+    <>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <StatTileSkeleton caption />
         <StatTileSkeleton />
@@ -32,6 +25,23 @@ export default function TurnaroundLoading() {
         Dockets with timing data
       </h2>
       <TableSkeleton rows={8} cols={5} />
+    </>
+  );
+}
+
+export default function TurnaroundLoading() {
+  return (
+    <div aria-busy="true" aria-label="Loading turnaround">
+      <h1 className="text-2xl font-semibold text-neutral-900">Turnaround</h1>
+      <p className="mt-1 text-sm text-neutral-500">
+        Time on site and waiting time for the selected date range
+      </p>
+
+      <div className="mt-4">
+        <FilterBarSkeleton />
+      </div>
+
+      <TurnaroundResultsSkeleton />
     </div>
   );
 }

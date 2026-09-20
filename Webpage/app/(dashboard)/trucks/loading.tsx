@@ -1,5 +1,11 @@
 import { FilterBarSkeleton, TableSkeleton } from "@/components/ui/skeleton";
 
+// The table below the filter bar; also the fallback page.tsx shows while
+// a filter change is loading.
+export function TrucksResultsSkeleton() {
+  return <TableSkeleton rows={8} cols={6} />;
+}
+
 export default function TrucksLoading() {
   return (
     <div aria-busy="true" aria-label="Loading trucks">
@@ -12,7 +18,7 @@ export default function TrucksLoading() {
         <FilterBarSkeleton />
       </div>
 
-      <TableSkeleton rows={8} cols={6} />
+      <TrucksResultsSkeleton />
     </div>
   );
 }

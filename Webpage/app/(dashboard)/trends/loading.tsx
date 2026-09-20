@@ -1,5 +1,17 @@
 import { ChartSkeleton, FilterBarSkeleton } from "@/components/ui/skeleton";
 
+// The chart cards below the filter bar; also the fallback page.tsx shows
+// while a filter change is loading.
+export function TrendsResultsSkeleton() {
+  return (
+    <div className="space-y-4">
+      <ChartSkeleton height={220} />
+      <ChartSkeleton height={220} />
+      <ChartSkeleton height={260} />
+    </div>
+  );
+}
+
 export default function TrendsLoading() {
   return (
     <div aria-busy="true" aria-label="Loading trends">
@@ -12,11 +24,7 @@ export default function TrendsLoading() {
         <FilterBarSkeleton />
       </div>
 
-      <div className="space-y-4">
-        <ChartSkeleton height={220} />
-        <ChartSkeleton height={220} />
-        <ChartSkeleton height={260} />
-      </div>
+      <TrendsResultsSkeleton />
     </div>
   );
 }

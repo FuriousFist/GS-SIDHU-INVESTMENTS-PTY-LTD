@@ -1,5 +1,11 @@
 import { FilterBarSkeleton, TableSkeleton } from "@/components/ui/skeleton";
 
+// The table below the filter bar; also the fallback page.tsx shows while
+// a filter change is loading.
+export function DriversResultsSkeleton() {
+  return <TableSkeleton rows={8} cols={4} />;
+}
+
 export default function DriversLoading() {
   return (
     <div aria-busy="true" aria-label="Loading drivers">
@@ -13,7 +19,7 @@ export default function DriversLoading() {
         <FilterBarSkeleton />
       </div>
 
-      <TableSkeleton rows={8} cols={4} />
+      <DriversResultsSkeleton />
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { resolveDateRange, type SearchParams } from "@/lib/utils/date-range";
 import { getTurnaroundData } from "@/lib/queries/turnaround";
 import { DateRangeFilter } from "@/components/date-range-filter";
@@ -5,6 +6,7 @@ import { StatTile } from "@/components/stat-tile";
 import { TurnaroundHistogram } from "@/components/charts/turnaround-histogram";
 import { ClickableRow } from "@/components/clickable-row";
 import { formatDate, formatMinutes } from "@/lib/utils/format";
+import { TurnaroundResultsSkeleton } from "./loading";
 
 export default async function TurnaroundPage({
   searchParams,
@@ -13,16 +15,6 @@ export default async function TurnaroundPage({
 }) {
   const params = await searchParams;
   const { from, to } = resolveDateRange(params);
-  const { dockets, totalDockets, siteStats, waitStats } =
-    await getTurnaroundData(from, to);
-
-  const siteMinutesValues = dockets
-    .map((d) => d.siteMinutes)
-    .filter((v): v is number => v !== null);
-
-  const timedDockets = dockets
-    .filter((d) => d.siteMinutes !== null || d.waitMinutes !== null)
-    .sort((a, b) => (b.docket_date ?? "").localeCompare(a.docket_date ?? ""));
 
   return (
     <div>
@@ -35,6 +27,33 @@ export default async function TurnaroundPage({
         <DateRangeFilter from={from} to={to} pathname="/turnaround" />
       </div>
 
+      {/* Keyed on the filters so a filter change mounts a fresh boundary and
+          shows the skeleton, rather than holding the stale results on screen
+          until the new data arrives (loading.tsx only covers route changes). */}
+      <Suspense
+        key={`${from}:${to}`}
+        fallback={<TurnaroundResultsSkeleton />}
+      >
+        <TurnaroundResults from={from} to={to} />
+      </Suspense>
+    </div>
+  );
+}
+
+async function TurnaroundResults({ from, to }: { from: string; to: string }) {
+  const { dockets, totalDockets, siteStats, waitStats } =
+    await getTurnaroundData(from, to);
+
+  const siteMinutesValues = dockets
+    .map((d) => d.siteMinutes)
+    .filter((v): v is number => v !== null);
+
+  const timedDockets = dockets
+    .filter((d) => d.siteMinutes !== null || d.waitMinutes !== null)
+    .sort((a, b) => (b.docket_date ?? "").localeCompare(a.docket_date ?? ""));
+
+  return (
+    <>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <StatTile
           label="Avg. time on site"
@@ -113,6 +132,6 @@ export default async function TurnaroundPage({
           </table>
         </div>
       )}
-    </div>
+    </>
   );
 }

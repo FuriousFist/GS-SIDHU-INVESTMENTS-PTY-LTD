@@ -1,9 +1,11 @@
+import { Suspense } from "react";
 import { resolveDateRange, type SearchParams } from "@/lib/utils/date-range";
 import { getOverviewData } from "@/lib/queries/overview";
 import { DateRangeFilter } from "@/components/date-range-filter";
 import { StatTile } from "@/components/stat-tile";
 import { DocketTable } from "@/components/dockets/docket-table";
 import { formatMinutes } from "@/lib/utils/format";
+import { OverviewResultsSkeleton } from "./loading";
 
 export default async function OverviewPage({
   searchParams,
@@ -12,15 +14,6 @@ export default async function OverviewPage({
 }) {
   const params = await searchParams;
   const { from, to } = resolveDateRange(params);
-
-  const {
-    totalDockets,
-    totalConcreteM3,
-    totalAggregatesTonnes,
-    activeTrucks,
-    recentDockets,
-    turnaround,
-  } = await getOverviewData(from, to);
 
   return (
     <div>
@@ -33,6 +26,28 @@ export default async function OverviewPage({
         <DateRangeFilter from={from} to={to} pathname="/" />
       </div>
 
+      {/* Keyed on the filters so a filter change mounts a fresh boundary and
+          shows the skeleton, rather than holding the stale results on screen
+          until the new data arrives (loading.tsx only covers route changes). */}
+      <Suspense key={`${from}:${to}`} fallback={<OverviewResultsSkeleton />}>
+        <OverviewResults from={from} to={to} />
+      </Suspense>
+    </div>
+  );
+}
+
+async function OverviewResults({ from, to }: { from: string; to: string }) {
+  const {
+    totalDockets,
+    totalConcreteM3,
+    totalAggregatesTonnes,
+    activeTrucks,
+    recentDockets,
+    turnaround,
+  } = await getOverviewData(from, to);
+
+  return (
+    <>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
         <StatTile label="Dockets" value={totalDockets.toLocaleString()} />
         <StatTile
@@ -59,6 +74,6 @@ export default async function OverviewPage({
         Recent dockets
       </h2>
       <DocketTable dockets={recentDockets} />
-    </div>
+    </>
   );
 }
