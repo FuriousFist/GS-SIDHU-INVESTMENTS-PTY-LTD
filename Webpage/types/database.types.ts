@@ -39,6 +39,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      companies: {
+        Row: {
+          abn: string | null
+          acn: string | null
+          created_at: string | null
+          id: string
+          name: string
+          notes: string | null
+          sole_trader: boolean
+          supplier: string
+        }
+        Insert: {
+          abn?: string | null
+          acn?: string | null
+          created_at?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          sole_trader?: boolean
+          supplier: string
+        }
+        Update: {
+          abn?: string | null
+          acn?: string | null
+          created_at?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          sole_trader?: boolean
+          supplier?: string
+        }
+        Relationships: []
+      }
       docket_loads: {
         Row: {
           created_at: string | null
@@ -185,41 +218,245 @@ export type Database = {
           },
         ]
       }
+      document_types: {
+        Row: {
+          category: string | null
+          code: string
+          default_never_expires: boolean
+          id: string
+          name: string
+          required: boolean
+          scope: string
+          sort_order: number
+          supplier: string | null
+        }
+        Insert: {
+          category?: string | null
+          code: string
+          default_never_expires?: boolean
+          id?: string
+          name: string
+          required?: boolean
+          scope: string
+          sort_order?: number
+          supplier?: string | null
+        }
+        Update: {
+          category?: string | null
+          code?: string
+          default_never_expires?: boolean
+          id?: string
+          name?: string
+          required?: boolean
+          scope?: string
+          sort_order?: number
+          supplier?: string | null
+        }
+        Relationships: []
+      }
+      document_versions: {
+        Row: {
+          document_id: string
+          expiry_date: string | null
+          file_name: string
+          id: string
+          mime_type: string
+          never_expires: boolean
+          size_bytes: number | null
+          storage_path: string
+          uploaded_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          document_id: string
+          expiry_date?: string | null
+          file_name: string
+          id?: string
+          mime_type: string
+          never_expires?: boolean
+          size_bytes?: number | null
+          storage_path: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          document_id?: string
+          expiry_date?: string | null
+          file_name?: string
+          id?: string
+          mime_type?: string
+          never_expires?: boolean
+          size_bytes?: number | null
+          storage_path?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_versions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      documents: {
+        Row: {
+          company_id: string | null
+          created_at: string | null
+          current_version_id: string | null
+          document_type_id: string
+          id: string
+          label: string | null
+          trailer_id: string | null
+          truck_id: string | null
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string | null
+          current_version_id?: string | null
+          document_type_id: string
+          id?: string
+          label?: string | null
+          trailer_id?: string | null
+          truck_id?: string | null
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string | null
+          current_version_id?: string | null
+          document_type_id?: string
+          id?: string
+          label?: string | null
+          trailer_id?: string | null
+          truck_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_current_version_id_fkey"
+            columns: ["current_version_id"]
+            isOneToOne: false
+            referencedRelation: "document_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_document_type_id_fkey"
+            columns: ["document_type_id"]
+            isOneToOne: false
+            referencedRelation: "document_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_trailer_id_fkey"
+            columns: ["trailer_id"]
+            isOneToOne: false
+            referencedRelation: "trailers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_truck_id_fkey"
+            columns: ["truck_id"]
+            isOneToOne: false
+            referencedRelation: "trucks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trailers: {
+        Row: {
+          created_at: string | null
+          id: string
+          notes: string | null
+          registration: string | null
+          registration_state: string | null
+          truck_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          registration?: string | null
+          registration_state?: string | null
+          truck_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          registration?: string | null
+          registration_state?: string | null
+          truck_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trailers_truck_id_fkey"
+            columns: ["truck_id"]
+            isOneToOne: true
+            referencedRelation: "trucks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trucks: {
         Row: {
           active: boolean | null
+          base_location: string | null
           company: string | null
+          company_id: string | null
           created_at: string | null
           id: string
           purchase_date: string | null
           purchase_price: number | null
           registration: string | null
+          registration_state: string | null
           truck_number: string | null
           truck_type: string | null
         }
         Insert: {
           active?: boolean | null
+          base_location?: string | null
           company?: string | null
+          company_id?: string | null
           created_at?: string | null
           id?: string
           purchase_date?: string | null
           purchase_price?: number | null
           registration?: string | null
+          registration_state?: string | null
           truck_number?: string | null
           truck_type?: string | null
         }
         Update: {
           active?: boolean | null
+          base_location?: string | null
           company?: string | null
+          company_id?: string | null
           created_at?: string | null
           id?: string
           purchase_date?: string | null
           purchase_price?: number | null
           registration?: string | null
+          registration_state?: string | null
           truck_number?: string | null
           truck_type?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "trucks_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
