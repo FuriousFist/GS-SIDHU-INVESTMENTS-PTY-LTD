@@ -64,4 +64,20 @@ describe("Sidebar", () => {
       "bg-neutral-900"
     );
   });
+
+  test("does not render the removed Customers and Plants tabs", () => {
+    usePathname.mockReturnValue("/");
+
+    render(<Sidebar />);
+
+    expect(
+      screen.queryByRole("link", { name: "Customers" })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Plants" })
+    ).not.toBeInTheDocument();
+    expect(screen.getAllByRole("link").map((l) => l.getAttribute("href"))).toEqual(
+      ["/", "/dockets", "/trucks", "/trends", "/turnaround", "/drivers"]
+    );
+  });
 });
