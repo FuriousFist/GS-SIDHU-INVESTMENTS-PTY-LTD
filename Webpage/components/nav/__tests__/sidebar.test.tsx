@@ -64,6 +64,46 @@ describe("Sidebar", () => {
       "bg-neutral-900"
     );
   });
+
+  test("does not render the removed Customers and Plants tabs", () => {
+    usePathname.mockReturnValue("/");
+
+    render(<Sidebar />);
+
+    expect(
+      screen.queryByRole("link", { name: "Customers" })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Plants" })
+    ).not.toBeInTheDocument();
+    expect(screen.getAllByRole("link").map((l) => l.getAttribute("href"))).toEqual(
+      [
+        "/",
+        "/dockets",
+        "/trucks",
+        "/companies",
+        "/trends",
+        "/turnaround",
+        "/drivers",
+      ]
+    );
+  });
+
+  test("each nav link carries a hidden pending indicator and press styles", () => {
+    usePathname.mockReturnValue("/");
+
+    render(<Sidebar />);
+
+    const link = screen.getByRole("link", { name: "Dockets" });
+    expect(link).toHaveClass("active:bg-neutral-200", "transition-colors");
+
+    // The indicator is always rendered (fixed size, opacity toggled) so the
+    // label doesn't shift when a navigation becomes pending.
+    const dot = link.querySelector("[aria-hidden='true']");
+    expect(dot).not.toBeNull();
+    expect(dot).toHaveClass("opacity-0");
+    expect(dot).not.toHaveAttribute("data-pending");
+  });
 });
 
 describe("Sidebar companies link and alert badge", () => {

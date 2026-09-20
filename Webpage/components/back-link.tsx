@@ -21,7 +21,7 @@ export function BackLink({
           router.push(fallbackHref);
         }
       }}
-      className="text-sm text-neutral-500 hover:text-neutral-800"
+      className="-mx-1.5 -my-0.5 rounded-md px-1.5 py-0.5 text-sm text-neutral-500 transition-colors hover:text-neutral-800 active:scale-[0.98] active:bg-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
     >
       {children}
     </button>

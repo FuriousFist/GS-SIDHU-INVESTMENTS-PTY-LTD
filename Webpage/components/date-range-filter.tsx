@@ -1,7 +1,22 @@
-export function DateRangeFilter({ from, to }: { from: string; to: string }) {
+import Form from "next/form";
+import { ApplyButton } from "@/components/ui/apply-button";
+import { FilterInput } from "@/components/ui/filter-input";
+
+// `pathname` is the route to submit to (the page's own path). next/form
+// turns the submit into a client-side navigation with the fields encoded
+// as search params, so the route's loading.tsx shows while data loads.
+export function DateRangeFilter({
+  from,
+  to,
+  pathname,
+}: {
+  from: string;
+  to: string;
+  pathname: string;
+}) {
   return (
-    <form
-      method="GET"
+    <Form
+      action={pathname}
       className="mb-4 flex flex-wrap items-end gap-3 rounded-lg border border-neutral-200 bg-white p-4"
     >
       <div>
@@ -11,12 +26,11 @@ export function DateRangeFilter({ from, to }: { from: string; to: string }) {
         >
           From
         </label>
-        <input
+        <FilterInput
           id="date-range-from"
           type="date"
           name="from"
           defaultValue={from}
-          className="rounded-md border border-neutral-300 px-2 py-1.5 text-sm"
         />
       </div>
 
@@ -27,21 +41,15 @@ export function DateRangeFilter({ from, to }: { from: string; to: string }) {
         >
           To
         </label>
-        <input
+        <FilterInput
           id="date-range-to"
           type="date"
           name="to"
           defaultValue={to}
-          className="rounded-md border border-neutral-300 px-2 py-1.5 text-sm"
         />
       </div>
 
-      <button
-        type="submit"
-        className="rounded-md bg-neutral-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-neutral-800"
-      >
-        Apply
-      </button>
-    </form>
+      <ApplyButton />
+    </Form>
   );
 }

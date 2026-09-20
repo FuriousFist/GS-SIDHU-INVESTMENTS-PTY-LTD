@@ -21,7 +21,7 @@ agitator/trucking business.
 7. Runs automatically every day via a scheduled GitHub Action.
 
 A Next.js dashboard reads that data to show truck productivity, docket
-history, customer/plant breakdowns, delivery trends, and turnaround times.
+history, delivery trends, and turnaround times.
 
 ## Project structure
 

@@ -1,21 +1,39 @@
 "use client";
 
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { logout } from "@/app/actions/auth";
+
+const FOCUS_RING =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900";
 
 const NAV_ITEMS = [
   { href: "/", label: "Overview" },
   { href: "/dockets", label: "Dockets" },
   { href: "/trucks", label: "Trucks" },
   { href: "/companies", label: "Companies" },
-  { href: "/customers", label: "Customers" },
-  { href: "/plants", label: "Plants" },
   { href: "/trends", label: "Trends" },
   { href: "/turnaround", label: "Turnaround" },
   { href: "/drivers", label: "Drivers" },
 ];
+
+// Fixed-size dot next to a nav label that becomes visible (and pulses)
+// while that link's destination is still loading. Always rendered so the
+// label doesn't shift when it toggles.
+function NavPendingIndicator() {
+  const { pending } = useLinkStatus();
+
+  return (
+    <span
+      aria-hidden="true"
+      data-pending={pending || undefined}
+      className={`ml-2 inline-block h-2 w-2 rounded-full bg-current transition-opacity ${
+        pending ? "animate-pulse opacity-70" : "opacity-0"
+      }`}
+    />
+  );
+}
 
 export function Sidebar({ alertCount = 0 }: { alertCount?: number }) {
   const pathname = usePathname();
@@ -37,7 +55,7 @@ export function Sidebar({ alertCount = 0 }: { alertCount?: number }) {
           type="button"
           onClick={() => setOpen(true)}
           aria-label="Open menu"
-          className="-ml-2 rounded-md p-2 text-neutral-600 hover:bg-neutral-100"
+          className={`-ml-2 rounded-md p-2 text-neutral-600 transition-colors hover:bg-neutral-100 active:scale-[0.98] active:bg-neutral-200 ${FOCUS_RING}`}
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -84,7 +102,7 @@ export function Sidebar({ alertCount = 0 }: { alertCount?: number }) {
             type="button"
             onClick={() => setOpen(false)}
             aria-label="Close menu"
-            className="-mr-1 rounded-md p-1.5 text-neutral-500 hover:bg-neutral-100 lg:hidden"
+            className={`-mr-1 rounded-md p-1.5 text-neutral-500 transition-colors hover:bg-neutral-100 active:scale-[0.98] active:bg-neutral-200 lg:hidden ${FOCUS_RING}`}
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -113,10 +131,11 @@ export function Sidebar({ alertCount = 0 }: { alertCount?: number }) {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`block rounded-md px-3 py-2 text-sm font-medium ${
+                aria-current={isActive ? "page" : undefined}
+                className={`flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors ${FOCUS_RING} ${
                   isActive
-                    ? "bg-neutral-900 text-white"
-                    : "text-neutral-600 hover:bg-neutral-100"
+                    ? "bg-neutral-900 text-white active:bg-neutral-700"
+                    : "text-neutral-600 hover:bg-neutral-100 active:bg-neutral-200"
                 }`}
               >
                 {item.label}
@@ -128,6 +147,7 @@ export function Sidebar({ alertCount = 0 }: { alertCount?: number }) {
                     {alertCount}
                   </span>
                 )}
+                <NavPendingIndicator />
               </Link>
             );
           })}
@@ -136,7 +156,7 @@ export function Sidebar({ alertCount = 0 }: { alertCount?: number }) {
         <form action={logout} className="border-t border-neutral-200 p-2">
           <button
             type="submit"
-            className="w-full rounded-md px-3 py-2 text-left text-sm font-medium text-neutral-600 hover:bg-neutral-100"
+            className={`w-full rounded-md px-3 py-2 text-left text-sm font-medium text-neutral-600 transition-colors hover:bg-neutral-100 active:scale-[0.98] active:bg-neutral-200 ${FOCUS_RING}`}
           >
             Log out
           </button>

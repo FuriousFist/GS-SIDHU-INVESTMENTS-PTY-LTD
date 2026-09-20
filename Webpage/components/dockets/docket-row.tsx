@@ -1,18 +1,14 @@
-"use client";
-
-import { useRouter } from "next/navigation";
+import { ClickableRow } from "@/components/clickable-row";
 import { formatDate, formatQuantity } from "@/lib/utils/format";
 import type { Database } from "@/types/database.types";
 
 type DocketSummaryRow = Database["public"]["Views"]["docket_summary"]["Row"];
 
 export function DocketRow({ docket }: { docket: DocketSummaryRow }) {
-  const router = useRouter();
-
   return (
-    <tr
-      onClick={() => router.push(`/dockets/${docket.id}`)}
-      className="cursor-pointer border-b border-neutral-100 last:border-0 hover:bg-neutral-50"
+    <ClickableRow
+      href={`/dockets/${docket.id}`}
+      className="border-b border-neutral-100 last:border-0 hover:bg-neutral-50"
     >
       <td className="px-4 py-3 text-neutral-600">
         {formatDate(docket.docket_date)}
@@ -37,6 +33,6 @@ export function DocketRow({ docket }: { docket: DocketSummaryRow }) {
           ? formatQuantity(docket.total_tonnes, "tonnes")
           : formatQuantity(docket.total_m3, "m3")}
       </td>
-    </tr>
+    </ClickableRow>
   );
 }
