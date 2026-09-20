@@ -1,11 +1,11 @@
-"use client";
-
-import { useRouter } from "next/navigation";
+import { ClickableRow } from "@/components/clickable-row";
 import { formatDate, formatQuantity } from "@/lib/utils/format";
 import type { Database } from "@/types/database.types";
 
 type TruckSummaryRow =
   Database["public"]["Functions"]["get_truck_summary"]["Returns"][number];
+
+const ROW_CLASSES = "border-b border-neutral-100 last:border-0";
 
 export function TruckRow({
   truck,
@@ -16,18 +16,8 @@ export function TruckRow({
   from: string;
   to: string;
 }) {
-  const router = useRouter();
-  const href = truck.truck_id
-    ? `/trucks/${truck.truck_id}?from=${from}&to=${to}`
-    : undefined;
-
-  return (
-    <tr
-      onClick={href ? () => router.push(href) : undefined}
-      className={`border-b border-neutral-100 last:border-0 hover:bg-neutral-50 ${
-        href ? "cursor-pointer" : ""
-      }`}
-    >
+  const cells = (
+    <>
       <td className="px-4 py-3 font-medium text-neutral-900">
         {truck.truck_number}
       </td>
@@ -44,6 +34,20 @@ export function TruckRow({
       <td className="px-4 py-3 text-neutral-600">
         {formatDate(truck.last_docket_date)}
       </td>
-    </tr>
+    </>
+  );
+
+  // The "Unassigned" bucket has no truck_id and nothing to navigate to.
+  if (!truck.truck_id) {
+    return <tr className={ROW_CLASSES}>{cells}</tr>;
+  }
+
+  return (
+    <ClickableRow
+      href={`/trucks/${truck.truck_id}?from=${from}&to=${to}`}
+      className={`${ROW_CLASSES} hover:bg-neutral-50`}
+    >
+      {cells}
+    </ClickableRow>
   );
 }

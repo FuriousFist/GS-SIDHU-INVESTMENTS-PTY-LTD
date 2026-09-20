@@ -43,7 +43,7 @@ export default async function DocketDetailPage({
             href={pdfUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800"
+            className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-neutral-800 active:scale-[0.98] active:bg-neutral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2"
           >
             View PDF
           </a>

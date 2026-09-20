@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { resolveDateRange, type SearchParams } from "@/lib/utils/date-range";
 import { getTruckDockets } from "@/lib/queries/trucks";
@@ -10,6 +11,10 @@ import {
   formatMinutes,
   parseIntervalMinutes,
 } from "@/lib/utils/format";
+import { TruckHeadingSkeleton, TruckResultsSkeleton } from "./loading";
+
+// null when the truck doesn't exist (or the query failed).
+type TruckResult = Awaited<ReturnType<typeof getTruckDockets>> | null;
 
 function average(values: number[]) {
   if (values.length === 0) return null;
@@ -26,14 +31,67 @@ export default async function TruckDetailPage({
   const { truckId } = await params;
   const { from, to } = resolveDateRange(await searchParams);
 
-  let result;
-  try {
-    result = await getTruckDockets(truckId, from, to);
-  } catch {
-    notFound();
-  }
+  // One query shared by the heading and the stats/table below the filters.
+  const result: Promise<TruckResult> = getTruckDockets(truckId, from, to).catch(
+    () => null
+  );
 
-  const { truck, dockets } = result;
+  return (
+    <div>
+      <BackLink fallbackHref="/trucks">&larr; Back</BackLink>
+
+      {/* The heading only depends on the truck, so it keeps its key (and
+          stays on screen) across filter changes. */}
+      <Suspense key={truckId} fallback={<TruckHeadingSkeleton />}>
+        <TruckHeading result={result} />
+      </Suspense>
+
+      <div className="mt-4">
+        <DateRangeFilter
+          from={from}
+          to={to}
+          pathname={`/trucks/${truckId}`}
+        />
+      </div>
+
+      {/* Keyed on the filters so a filter change mounts a fresh boundary and
+          shows the skeleton, rather than holding the stale results on screen
+          until the new data arrives (loading.tsx only covers route changes). */}
+      <Suspense
+        key={`${truckId}:${from}:${to}`}
+        fallback={<TruckResultsSkeleton />}
+      >
+        <TruckResults result={result} />
+      </Suspense>
+    </div>
+  );
+}
+
+async function TruckHeading({ result }: { result: Promise<TruckResult> }) {
+  const data = await result;
+  if (!data) notFound();
+
+  const { truck } = data;
+
+  return (
+    <>
+      <h1 className="mt-2 text-2xl font-semibold text-neutral-900">
+        Truck {truck.truck_number}
+      </h1>
+      <p className="mt-1 text-sm text-neutral-500">
+        {truck.company ?? "Unknown company"} &middot;{" "}
+        {truck.registration ?? "No registration on file"} &middot;{" "}
+        {truck.active ? "Active" : "Inactive"}
+      </p>
+    </>
+  );
+}
+
+async function TruckResults({ result }: { result: Promise<TruckResult> }) {
+  const data = await result;
+  if (!data) notFound();
+
+  const { dockets } = data;
 
   const totalConcreteM3 = dockets.reduce(
     (sum, d) => sum + (d.docket_type === "concrete" ? d.total_m3 ?? 0 : 0),
@@ -69,22 +127,7 @@ export default async function TruckDetailPage({
   }, null);
 
   return (
-    <div>
-      <BackLink fallbackHref="/trucks">&larr; Back</BackLink>
-
-      <h1 className="mt-2 text-2xl font-semibold text-neutral-900">
-        Truck {truck.truck_number}
-      </h1>
-      <p className="mt-1 text-sm text-neutral-500">
-        {truck.company ?? "Unknown company"} &middot;{" "}
-        {truck.registration ?? "No registration on file"} &middot;{" "}
-        {truck.active ? "Active" : "Inactive"}
-      </p>
-
-      <div className="mt-4">
-        <DateRangeFilter from={from} to={to} />
-      </div>
-
+    <>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
         <StatTile label="Dockets" value={dockets.length.toLocaleString()} />
         <StatTile label="Total loads" value={totalLoads.toLocaleString()} />
@@ -122,6 +165,6 @@ export default async function TruckDetailPage({
         Dockets
       </h2>
       <DocketTable dockets={dockets} />
-    </div>
+    </>
   );
 }
