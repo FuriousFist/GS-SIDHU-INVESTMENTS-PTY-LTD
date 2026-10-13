@@ -16,9 +16,10 @@ import {
   parseIntervalMinutes,
 } from "@/lib/utils/format";
 import {
+  TruckDocketsSkeleton,
   TruckDocumentsSkeleton,
   TruckHeadingSkeleton,
-  TruckResultsSkeleton,
+  TruckStatsSkeleton,
 } from "./loading";
 
 // null when the truck doesn't exist (or the query failed).
@@ -26,6 +27,40 @@ type TruckResult = Awaited<ReturnType<typeof getTruckDockets>> | null;
 type ComplianceResult = Awaited<ReturnType<typeof getTruckCompliance>> | null;
 
 type CameFrom = { href: string; companyId: string } | null;
+
+type Tab = "dockets" | "documents";
+type DocsTab = "truck" | "trailer";
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: "dockets", label: "Dockets" },
+  { id: "documents", label: "Documents" },
+];
+
+const tabClass = (active: boolean) =>
+  `-mb-px border-b-2 px-3 py-2 text-sm font-medium ${
+    active
+      ? "border-neutral-900 text-neutral-900"
+      : "border-transparent text-neutral-500 hover:text-neutral-800"
+  }`;
+
+/** This truck's URL with the current search params, plus `updates`. */
+function truckHref(
+  truckId: string,
+  search: SearchParams,
+  updates: Record<string, string | null>
+) {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(search)) {
+    const v = firstParam(value);
+    if (v !== undefined) query.set(key, v);
+  }
+  for (const [key, value] of Object.entries(updates)) {
+    if (value === null) query.delete(key);
+    else query.set(key, value);
+  }
+  const qs = query.toString();
+  return `/trucks/${truckId}${qs ? `?${qs}` : ""}`;
+}
 
 function average(values: number[]) {
   if (values.length === 0) return null;
@@ -56,14 +91,17 @@ export default async function TruckDetailPage({
   const search = await searchParams;
   const { from, to } = resolveDateRange(search);
   const cameFrom = resolveFrom(firstParam(search.from));
-  const docsTab = firstParam(search.docs) === "trailer" ? "trailer" : "truck";
+  const tab: Tab =
+    firstParam(search.tab) === "documents" ? "documents" : "dockets";
+  const docsTab: DocsTab =
+    firstParam(search.docs) === "trailer" ? "trailer" : "truck";
 
   // One query shared by the heading and the stats/table below the filters.
   const result: Promise<TruckResult> = getTruckDockets(truckId, from, to).catch(
     () => null
   );
   // Companies, trailer and document checklists - shared by the details
-  // card in the heading and the Documents section.
+  // card in the heading and the Documents tab.
   const compliance: Promise<ComplianceResult> = result
     .then((data) => (data ? getTruckCompliance(data.truck) : null))
     .catch(() => null);
@@ -85,6 +123,7 @@ export default async function TruckDetailPage({
           from={from}
           to={to}
           pathname={`/trucks/${truckId}`}
+          hidden={tab === "documents" ? { tab } : {}}
         />
       </div>
 
@@ -93,25 +132,49 @@ export default async function TruckDetailPage({
           until the new data arrives (loading.tsx only covers route changes). */}
       <Suspense
         key={`${truckId}:${from}:${to}`}
-        fallback={<TruckResultsSkeleton />}
+        fallback={<TruckStatsSkeleton />}
       >
-        <TruckResults result={result} />
+        <TruckStats result={result} />
       </Suspense>
 
-      <h2 className="mt-8 mb-2 text-lg font-semibold text-neutral-900">
-        Documents
-      </h2>
-      <Suspense
-        key={`${truckId}:${docsTab}`}
-        fallback={<TruckDocumentsSkeleton />}
+      <nav
+        aria-label="Truck sections"
+        className="mt-8 mb-3 flex gap-1 border-b border-neutral-200"
       >
-        <TruckDocuments
-          result={result}
-          compliance={compliance}
-          docsTab={docsTab}
-          cameFrom={cameFrom}
-        />
-      </Suspense>
+        {TABS.map(({ id, label }) => (
+          <Link
+            key={id}
+            href={truckHref(truckId, search, {
+              tab: id === "dockets" ? null : id,
+            })}
+            aria-current={id === tab ? "page" : undefined}
+            className={tabClass(id === tab)}
+          >
+            {label}
+          </Link>
+        ))}
+      </nav>
+
+      {tab === "dockets" ? (
+        <Suspense
+          key={`${truckId}:${from}:${to}`}
+          fallback={<TruckDocketsSkeleton />}
+        >
+          <TruckDockets result={result} />
+        </Suspense>
+      ) : (
+        <Suspense
+          key={`${truckId}:${docsTab}`}
+          fallback={<TruckDocumentsSkeleton />}
+        >
+          <TruckDocuments
+            result={result}
+            compliance={compliance}
+            docsTab={docsTab}
+            search={search}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }
@@ -158,7 +221,14 @@ async function TruckHeading({
   );
 }
 
-async function TruckResults({ result }: { result: Promise<TruckResult> }) {
+async function TruckDockets({ result }: { result: Promise<TruckResult> }) {
+  const data = await result;
+  if (!data) notFound();
+
+  return <DocketTable dockets={data.dockets} />;
+}
+
+async function TruckStats({ result }: { result: Promise<TruckResult> }) {
   const data = await result;
   if (!data) notFound();
 
@@ -198,45 +268,38 @@ async function TruckResults({ result }: { result: Promise<TruckResult> }) {
   }, null);
 
   return (
-    <>
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-        <StatTile label="Dockets" value={dockets.length.toLocaleString()} />
-        <StatTile label="Total loads" value={totalLoads.toLocaleString()} />
-        {hasConcrete && (
-          <StatTile
-            label="Concrete delivered"
-            value={`${totalConcreteM3.toLocaleString()} m³`}
-          />
-        )}
-        {hasAggregates && (
-          <StatTile
-            label="Aggregates delivered"
-            value={`${totalAggregatesTonnes.toLocaleString()} t`}
-          />
-        )}
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+      <StatTile label="Dockets" value={dockets.length.toLocaleString()} />
+      <StatTile label="Total loads" value={totalLoads.toLocaleString()} />
+      {hasConcrete && (
         <StatTile
-          label="Avg. time on site"
-          value={formatMinutes(average(siteMinutes))}
-          caption={`Based on ${siteMinutes.length} of ${dockets.length} dockets`}
+          label="Concrete delivered"
+          value={`${totalConcreteM3.toLocaleString()} m³`}
         />
+      )}
+      {hasAggregates && (
         <StatTile
-          label="Avg. waiting time"
-          value={formatMinutes(average(waitMinutes))}
-          caption={`Based on ${waitMinutes.length} of ${dockets.length} dockets`}
+          label="Aggregates delivered"
+          value={`${totalAggregatesTonnes.toLocaleString()} t`}
         />
-        <StatTile label="Customers served" value={customerCount.toString()} />
-        <StatTile label="Plants used" value={plantCount.toString()} />
-        <StatTile
-          label="Last active"
-          value={lastActive ? formatDate(lastActive) : "-"}
-        />
-      </div>
-
-      <h2 className="mt-8 mb-2 text-lg font-semibold text-neutral-900">
-        Dockets
-      </h2>
-      <DocketTable dockets={dockets} />
-    </>
+      )}
+      <StatTile
+        label="Avg. time on site"
+        value={formatMinutes(average(siteMinutes))}
+        caption={`Based on ${siteMinutes.length} of ${dockets.length} dockets`}
+      />
+      <StatTile
+        label="Avg. waiting time"
+        value={formatMinutes(average(waitMinutes))}
+        caption={`Based on ${waitMinutes.length} of ${dockets.length} dockets`}
+      />
+      <StatTile label="Customers served" value={customerCount.toString()} />
+      <StatTile label="Plants used" value={plantCount.toString()} />
+      <StatTile
+        label="Last active"
+        value={lastActive ? formatDate(lastActive) : "-"}
+      />
+    </div>
   );
 }
 
@@ -244,12 +307,12 @@ async function TruckDocuments({
   result,
   compliance,
   docsTab,
-  cameFrom,
+  search,
 }: {
   result: Promise<TruckResult>;
   compliance: Promise<ComplianceResult>;
-  docsTab: "truck" | "trailer";
-  cameFrom: CameFrom;
+  docsTab: DocsTab;
+  search: SearchParams;
 }) {
   const data = await result;
   if (!data) notFound();
@@ -287,26 +350,19 @@ async function TruckDocuments({
         aria-label="Document sections"
         className="mb-3 flex gap-1 border-b border-neutral-200"
       >
-        {(["truck", "trailer"] as const).map((section) => {
-          const active = section === docsTab;
-          const query = new URLSearchParams();
-          if (cameFrom) query.set("from", cameFrom.href);
-          query.set("docs", section);
-          return (
-            <Link
-              key={section}
-              href={`/trucks/${truck.id}?${query.toString()}`}
-              aria-current={active ? "page" : undefined}
-              className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium capitalize ${
-                active
-                  ? "border-neutral-900 text-neutral-900"
-                  : "border-transparent text-neutral-500 hover:text-neutral-800"
-              }`}
-            >
-              {section}
-            </Link>
-          );
-        })}
+        {(["truck", "trailer"] as const).map((section) => (
+          <Link
+            key={section}
+            href={truckHref(truck.id, search, {
+              tab: "documents",
+              docs: section,
+            })}
+            aria-current={section === docsTab ? "page" : undefined}
+            className={`${tabClass(section === docsTab)} capitalize`}
+          >
+            {section}
+          </Link>
+        ))}
       </nav>
       {docsTab === "trailer" ? (
         <div className="space-y-3">

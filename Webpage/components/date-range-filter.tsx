@@ -5,14 +5,17 @@ import { FilterInput } from "@/components/ui/filter-input";
 // `pathname` is the route to submit to (the page's own path). next/form
 // turns the submit into a client-side navigation with the fields encoded
 // as search params, so the route's loading.tsx shows while data loads.
+// `hidden` carries other search params (e.g. the open tab) through a submit.
 export function DateRangeFilter({
   from,
   to,
   pathname,
+  hidden = {},
 }: {
   from: string;
   to: string;
   pathname: string;
+  hidden?: Record<string, string>;
 }) {
   return (
     <Form
@@ -48,6 +51,10 @@ export function DateRangeFilter({
           defaultValue={to}
         />
       </div>
+
+      {Object.entries(hidden).map(([name, value]) => (
+        <input key={name} type="hidden" name={name} value={value} />
+      ))}
 
       <ApplyButton />
     </Form>

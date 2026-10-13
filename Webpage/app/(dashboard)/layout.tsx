@@ -24,8 +24,10 @@ export default async function DashboardLayout({
   // migration not yet applied) must not take the whole dashboard down.
   const alertCount = await getComplianceAlertCount().catch(() => 0);
 
+  // On desktop the shell is pinned to the viewport so only <main> scrolls
+  // and the sidebar (with Log out at its foot) stays put.
   return (
-    <div className="flex min-h-screen flex-col lg:flex-row">
+    <div className="flex min-h-screen flex-col lg:h-screen lg:flex-row">
       <Sidebar alertCount={alertCount} />
       <main className="flex-1 overflow-y-auto overflow-x-hidden bg-neutral-50 p-4 sm:p-6 lg:p-8">
         {children}

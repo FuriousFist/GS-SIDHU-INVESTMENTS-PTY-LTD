@@ -5,9 +5,9 @@ import {
   TableSkeleton,
 } from "@/components/ui/skeleton";
 
-// The back link, truck heading and details card; the stats/table below
-// the filter bar; and the documents table. Also the fallbacks page.tsx
-// shows while the truck, a filter change or a documents tab is loading.
+// The back link, truck heading and details card; the stats below the
+// filter bar; and the dockets / documents tab contents. Also the fallbacks
+// page.tsx shows while the truck, a filter change or a tab is loading.
 export function TruckHeadingSkeleton() {
   return (
     <>
@@ -36,25 +36,22 @@ export function TruckDocumentsSkeleton() {
   return <TableSkeleton rows={6} cols={4} />;
 }
 
-export function TruckResultsSkeleton() {
-  return (
-    <>
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-        <StatTileSkeleton />
-        <StatTileSkeleton />
-        <StatTileSkeleton />
-        <StatTileSkeleton caption />
-        <StatTileSkeleton caption />
-        <StatTileSkeleton />
-        <StatTileSkeleton />
-        <StatTileSkeleton />
-      </div>
+export function TruckDocketsSkeleton() {
+  return <TableSkeleton rows={8} cols={7} />;
+}
 
-      <h2 className="mt-8 mb-2 text-lg font-semibold text-neutral-900">
-        Dockets
-      </h2>
-      <TableSkeleton rows={8} cols={7} />
-    </>
+export function TruckStatsSkeleton() {
+  return (
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+      <StatTileSkeleton />
+      <StatTileSkeleton />
+      <StatTileSkeleton />
+      <StatTileSkeleton caption />
+      <StatTileSkeleton caption />
+      <StatTileSkeleton />
+      <StatTileSkeleton />
+      <StatTileSkeleton />
+    </div>
   );
 }
 
@@ -67,12 +64,14 @@ export default function TruckDetailLoading() {
         <FilterBarSkeleton />
       </div>
 
-      <TruckResultsSkeleton />
+      <TruckStatsSkeleton />
 
-      <h2 className="mt-8 mb-2 text-lg font-semibold text-neutral-900">
-        Documents
-      </h2>
-      <TruckDocumentsSkeleton />
+      {/* Tab bar placeholder, matching the nav in page.tsx. */}
+      <div className="mt-8 mb-3 flex gap-1 border-b border-neutral-200 pb-2">
+        <Skeleton className="h-5 w-16" />
+        <Skeleton className="h-5 w-20" />
+      </div>
+      <TruckDocketsSkeleton />
     </div>
   );
 }
