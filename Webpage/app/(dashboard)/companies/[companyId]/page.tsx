@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { getCompany } from "@/lib/queries/companies";
 import type { SearchParams } from "@/lib/utils/date-range";
@@ -12,6 +13,14 @@ import { CompanyEditForm } from "@/components/companies/company-edit-form";
 import { CompanyTrucksTable } from "@/components/companies/company-trucks-table";
 import { AddDocumentForm } from "@/components/documents/add-document-form";
 import { DocumentTable } from "@/components/documents/document-table";
+import {
+  CompanyDocumentsSkeleton,
+  CompanyHeadingSkeleton,
+  CompanyTrucksSkeleton,
+} from "./loading";
+
+// null when the company doesn't exist (or the query failed).
+type CompanyResult = Awaited<ReturnType<typeof getCompany>> | null;
 
 type Tab = "insurance" | "other" | "trucks";
 
@@ -36,6 +45,12 @@ function uniqueTypes(slots: DocumentSlot[]): DocumentTypeInfo[] {
   return [...seen.values()].sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
+function byCategory(data: NonNullable<CompanyResult>, category: DocumentCategory) {
+  return data.documents.filter(
+    (slot) => slot.documentType.category === category
+  );
+}
+
 export default async function CompanyPage({
   params,
   searchParams,
@@ -46,32 +61,18 @@ export default async function CompanyPage({
   const { companyId } = await params;
   const tab = resolveTab((await searchParams).tab);
 
-  let result;
-  try {
-    result = await getCompany(companyId);
-  } catch {
-    notFound();
-  }
-
-  const { company, documents, trucks } = result;
-
-  const byCategory = (category: DocumentCategory) =>
-    documents.filter((slot) => slot.documentType.category === category);
-
-  const badges: Record<Tab, number> = {
-    insurance: byCategory("insurance").filter((s) => needsAttention(s.status))
-      .length,
-    other: byCategory("other").filter((s) => needsAttention(s.status)).length,
-    trucks: trucks.filter((t) => needsAttention(t.summary.status)).length,
-  };
+  // One query shared by the heading, the tab badges and the tab contents.
+  const result: Promise<CompanyResult> = getCompany(companyId).catch(
+    () => null
+  );
 
   return (
     <div>
-      <BackLink fallbackHref="/companies">&larr; Back to companies</BackLink>
-
-      <div className="mt-2">
-        <CompanyEditForm company={company} />
-      </div>
+      {/* The heading only depends on the company, so it keeps its key (and
+          stays on screen) across tab changes. */}
+      <Suspense key={companyId} fallback={<CompanyHeadingSkeleton />}>
+        <CompanyHeading result={result} />
+      </Suspense>
 
       <nav
         aria-label="Company sections"
@@ -82,7 +83,7 @@ export default async function CompanyPage({
           return (
             <Link
               key={item.id}
-              href={`/companies/${company.id}?tab=${item.id}`}
+              href={`/companies/${companyId}?tab=${item.id}`}
               aria-current={active ? "page" : undefined}
               className={`-mb-px flex items-center gap-2 border-b-2 px-3 py-2 text-sm font-medium ${
                 active
@@ -91,33 +92,100 @@ export default async function CompanyPage({
               }`}
             >
               {item.label}
-              {badges[item.id] > 0 && (
-                <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 py-0.5 text-xs font-semibold leading-none text-white">
-                  {badges[item.id]}
-                </span>
-              )}
+              <Suspense key={companyId} fallback={null}>
+                <TabBadge result={result} tab={item.id} />
+              </Suspense>
             </Link>
           );
         })}
       </nav>
 
+      {/* Keyed on the tab so a tab change mounts a fresh boundary and shows
+          the skeleton, rather than holding the previous tab on screen until
+          the new data arrives (loading.tsx only covers route changes). */}
       <div className="mt-4">
-        {tab === "trucks" ? (
-          <CompanyTrucksTable companyId={company.id} trucks={trucks} />
-        ) : (
-          <div className="space-y-3">
-            <AddDocumentForm
-              companyId={company.id}
-              types={uniqueTypes(byCategory(tab))}
-            />
-            <DocumentTable
-              slots={byCategory(tab)}
-              owner={{ scope: "company", ownerId: company.id }}
-              emptyMessage={`No ${tab} document types are configured for ${company.supplier}.`}
-            />
-          </div>
-        )}
+        <Suspense
+          key={`${companyId}:${tab}`}
+          fallback={
+            tab === "trucks" ? (
+              <CompanyTrucksSkeleton />
+            ) : (
+              <CompanyDocumentsSkeleton />
+            )
+          }
+        >
+          <CompanyTabContent result={result} tab={tab} />
+        </Suspense>
       </div>
+    </div>
+  );
+}
+
+async function CompanyHeading({ result }: { result: Promise<CompanyResult> }) {
+  const data = await result;
+  if (!data) notFound();
+
+  return (
+    <>
+      <BackLink fallbackHref="/companies">&larr; Back to companies</BackLink>
+
+      <div className="mt-2">
+        <CompanyEditForm company={data.company} />
+      </div>
+    </>
+  );
+}
+
+async function TabBadge({
+  result,
+  tab,
+}: {
+  result: Promise<CompanyResult>;
+  tab: Tab;
+}) {
+  const data = await result;
+  if (!data) return null;
+
+  const count =
+    tab === "trucks"
+      ? data.trucks.filter((t) => needsAttention(t.summary.status)).length
+      : byCategory(data, tab).filter((s) => needsAttention(s.status)).length;
+
+  if (count === 0) return null;
+
+  return (
+    <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 py-0.5 text-xs font-semibold leading-none text-white">
+      {count}
+    </span>
+  );
+}
+
+async function CompanyTabContent({
+  result,
+  tab,
+}: {
+  result: Promise<CompanyResult>;
+  tab: Tab;
+}) {
+  const data = await result;
+  if (!data) notFound();
+
+  const { company, trucks } = data;
+
+  if (tab === "trucks") {
+    return <CompanyTrucksTable companyId={company.id} trucks={trucks} />;
+  }
+
+  const slots = byCategory(data, tab);
+
+  return (
+    <div className="space-y-3">
+      <AddDocumentForm companyId={company.id} types={uniqueTypes(slots)} />
+      <DocumentTable
+        slots={slots}
+        owner={{ scope: "company", ownerId: company.id }}
+        emptyMessage={`No ${tab} document types are configured for ${company.supplier}.`}
+      />
     </div>
   );
 }

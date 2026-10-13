@@ -8,6 +8,7 @@ import TruckDetailLoading from "@/app/(dashboard)/trucks/[truckId]/loading";
 import TrendsLoading from "@/app/(dashboard)/trends/loading";
 import TurnaroundLoading from "@/app/(dashboard)/turnaround/loading";
 import DriversLoading from "@/app/(dashboard)/drivers/loading";
+import CompanyLoading from "@/app/(dashboard)/companies/[companyId]/loading";
 
 // Smoke test: every route's loading.tsx renders a busy region containing
 // at least one pulsing skeleton block.
@@ -20,6 +21,7 @@ const LOADING_SCREENS = [
   ["trends", TrendsLoading],
   ["turnaround", TurnaroundLoading],
   ["drivers", DriversLoading],
+  ["companies/[companyId]", CompanyLoading],
 ] as const;
 
 describe("loading screens", () => {
