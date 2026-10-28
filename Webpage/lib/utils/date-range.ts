@@ -10,21 +10,21 @@ function firstParam(value: string | string[] | undefined) {
 
 /**
  * Resolves a `from`/`to` date range from URL search params, defaulting to
- * the last 30 days when either bound is missing or invalid.
+ * the last `defaultDays` days when either bound is missing or invalid.
  */
-export function resolveDateRange(params: SearchParams) {
+export function resolveDateRange(params: SearchParams, defaultDays = 30) {
   const rawFrom = firstParam(params.from);
   const rawTo = firstParam(params.to);
 
   const today = new Date();
-  const thirtyDaysAgo = new Date(today);
-  thirtyDaysAgo.setDate(today.getDate() - 30);
+  const defaultFrom = new Date(today);
+  defaultFrom.setDate(today.getDate() - defaultDays);
 
   const isValidDate = (value: string | undefined): value is string =>
     !!value && /^\d{4}-\d{2}-\d{2}$/.test(value);
 
   return {
-    from: isValidDate(rawFrom) ? rawFrom : toDateString(thirtyDaysAgo),
+    from: isValidDate(rawFrom) ? rawFrom : toDateString(defaultFrom),
     to: isValidDate(rawTo) ? rawTo : toDateString(today),
   };
 }

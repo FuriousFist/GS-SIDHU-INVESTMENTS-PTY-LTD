@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { getCompany } from "@/lib/queries/companies";
@@ -9,6 +8,7 @@ import type {
   DocumentTypeInfo,
 } from "@/lib/utils/document-slots";
 import { BackLink } from "@/components/back-link";
+import { TabNav } from "@/components/tab-nav";
 import { CompanyEditForm } from "@/components/companies/company-edit-form";
 import { CompanyTrucksTable } from "@/components/companies/company-trucks-table";
 import { AddDocumentForm } from "@/components/documents/add-document-form";
@@ -33,6 +33,10 @@ const TABS: { id: Tab; label: string }[] = [
 function resolveTab(value: string | string[] | undefined): Tab {
   const raw = Array.isArray(value) ? value[0] : value;
   return raw === "other" || raw === "trucks" ? raw : "insurance";
+}
+
+function tabSkeleton(tab: Tab) {
+  return tab === "trucks" ? <CompanyTrucksSkeleton /> : <CompanyDocumentsSkeleton />;
 }
 
 function needsAttention(status: string) {
@@ -74,49 +78,28 @@ export default async function CompanyPage({
         <CompanyHeading result={result} />
       </Suspense>
 
-      <nav
-        aria-label="Company sections"
-        className="mt-6 flex gap-1 border-b border-neutral-200"
+      {/* The panel Suspense is keyed on the tab so a tab change mounts a
+          fresh boundary and shows the skeleton (loading.tsx only covers
+          route changes). */}
+      <TabNav
+        label="Company sections"
+        className="mt-6 mb-4"
+        tabs={TABS.map((item) => ({
+          href: `/companies/${companyId}?tab=${item.id}`,
+          label: item.label,
+          current: item.id === tab,
+          badge: (
+            <Suspense key={companyId} fallback={null}>
+              <TabBadge result={result} tab={item.id} />
+            </Suspense>
+          ),
+          fallback: tabSkeleton(item.id),
+        }))}
       >
-        {TABS.map((item) => {
-          const active = item.id === tab;
-          return (
-            <Link
-              key={item.id}
-              href={`/companies/${companyId}?tab=${item.id}`}
-              aria-current={active ? "page" : undefined}
-              className={`-mb-px flex items-center gap-2 border-b-2 px-3 py-2 text-sm font-medium ${
-                active
-                  ? "border-neutral-900 text-neutral-900"
-                  : "border-transparent text-neutral-500 hover:text-neutral-800"
-              }`}
-            >
-              {item.label}
-              <Suspense key={companyId} fallback={null}>
-                <TabBadge result={result} tab={item.id} />
-              </Suspense>
-            </Link>
-          );
-        })}
-      </nav>
-
-      {/* Keyed on the tab so a tab change mounts a fresh boundary and shows
-          the skeleton, rather than holding the previous tab on screen until
-          the new data arrives (loading.tsx only covers route changes). */}
-      <div className="mt-4">
-        <Suspense
-          key={`${companyId}:${tab}`}
-          fallback={
-            tab === "trucks" ? (
-              <CompanyTrucksSkeleton />
-            ) : (
-              <CompanyDocumentsSkeleton />
-            )
-          }
-        >
+        <Suspense key={`${companyId}:${tab}`} fallback={tabSkeleton(tab)}>
           <CompanyTabContent result={result} tab={tab} />
         </Suspense>
-      </div>
+      </TabNav>
     </div>
   );
 }

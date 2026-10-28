@@ -42,4 +42,11 @@ describe("resolveDateRange", () => {
       to: "2026-09-15",
     });
   });
+
+  test("a custom default window is used when params are missing", () => {
+    expect(resolveDateRange({}, 10)).toEqual({
+      from: "2026-09-05",
+      to: "2026-09-15",
+    });
+  });
 });
