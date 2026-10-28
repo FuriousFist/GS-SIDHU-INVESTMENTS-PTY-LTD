@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { resolveDateRange, type SearchParams } from "@/lib/utils/date-range";
@@ -8,6 +7,8 @@ import { DateRangeFilter } from "@/components/date-range-filter";
 import { StatTile } from "@/components/stat-tile";
 import { DocketTable } from "@/components/dockets/docket-table";
 import { BackLink } from "@/components/back-link";
+import { Pagination } from "@/components/pagination";
+import { TabNav } from "@/components/tab-nav";
 import { DocumentTable } from "@/components/documents/document-table";
 import { TrailerCard } from "@/components/trucks/trailer-card";
 import { TruckDetailsCard } from "@/components/trucks/truck-details-card";
@@ -37,12 +38,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "documents", label: "Documents" },
 ];
 
-const tabClass = (active: boolean) =>
-  `-mb-px border-b-2 px-3 py-2 text-sm font-medium ${
-    active
-      ? "border-neutral-900 text-neutral-900"
-      : "border-transparent text-neutral-500 hover:text-neutral-800"
-  }`;
+const DOCKETS_PER_PAGE = 25;
 
 /** This truck's URL with the current search params, plus `updates`. */
 function truckHref(
@@ -85,12 +81,13 @@ export default async function TruckDetailPage({
 }) {
   const { truckId } = await params;
   const search = await searchParams;
-  const { from, to } = resolveDateRange(search);
+  const { from, to } = resolveDateRange(search, 10);
   const cameFrom = resolveFrom(firstParam(search.from));
   const tab: Tab =
     firstParam(search.tab) === "documents" ? "documents" : "dockets";
   const docsTab: DocsTab =
     firstParam(search.docs) === "trailer" ? "trailer" : "truck";
+  const page = Math.max(1, Number(firstParam(search.page)) || 1);
 
   // One query shared by the heading and the stats/table below the filters.
   const result: Promise<TruckResult> = getTruckDockets(truckId, from, to).catch(
@@ -133,44 +130,45 @@ export default async function TruckDetailPage({
         <TruckStats result={result} />
       </Suspense>
 
-      <nav
-        aria-label="Truck sections"
-        className="mt-8 mb-3 flex gap-1 border-b border-neutral-200"
+      <TabNav
+        label="Truck sections"
+        className="mt-8 mb-3"
+        tabs={TABS.map(({ id, label }) => ({
+          href: truckHref(truckId, search, {
+            tab: id === "dockets" ? null : id,
+            page: null,
+          }),
+          label,
+          current: id === tab,
+          fallback:
+            id === "dockets" ? (
+              <TruckDocketsSkeleton />
+            ) : (
+              <TruckDocumentsSkeleton />
+            ),
+        }))}
       >
-        {TABS.map(({ id, label }) => (
-          <Link
-            key={id}
-            href={truckHref(truckId, search, {
-              tab: id === "dockets" ? null : id,
-            })}
-            aria-current={id === tab ? "page" : undefined}
-            className={tabClass(id === tab)}
+        {tab === "dockets" ? (
+          <Suspense
+            key={`${truckId}:${from}:${to}:${page}`}
+            fallback={<TruckDocketsSkeleton />}
           >
-            {label}
-          </Link>
-        ))}
-      </nav>
-
-      {tab === "dockets" ? (
-        <Suspense
-          key={`${truckId}:${from}:${to}`}
-          fallback={<TruckDocketsSkeleton />}
-        >
-          <TruckDockets result={result} />
-        </Suspense>
-      ) : (
-        <Suspense
-          key={`${truckId}:${docsTab}`}
-          fallback={<TruckDocumentsSkeleton />}
-        >
-          <TruckDocuments
-            result={result}
-            compliance={compliance}
-            docsTab={docsTab}
-            search={search}
-          />
-        </Suspense>
-      )}
+            <TruckDockets result={result} page={page} search={search} />
+          </Suspense>
+        ) : (
+          <Suspense
+            key={`${truckId}:${docsTab}`}
+            fallback={<TruckDocumentsSkeleton />}
+          >
+            <TruckDocuments
+              result={result}
+              compliance={compliance}
+              docsTab={docsTab}
+              search={search}
+            />
+          </Suspense>
+        )}
+      </TabNav>
     </div>
   );
 }
@@ -217,11 +215,40 @@ async function TruckHeading({
   );
 }
 
-async function TruckDockets({ result }: { result: Promise<TruckResult> }) {
+async function TruckDockets({
+  result,
+  page,
+  search,
+}: {
+  result: Promise<TruckResult>;
+  page: number;
+  search: SearchParams;
+}) {
   const data = await result;
   if (!data) notFound();
 
-  return <DocketTable dockets={data.dockets} />;
+  // All dockets in range are already loaded for the stats; this only limits
+  // how many rows are rendered at once.
+  const totalPages = Math.max(
+    1,
+    Math.ceil(data.dockets.length / DOCKETS_PER_PAGE)
+  );
+  const start = (page - 1) * DOCKETS_PER_PAGE;
+
+  return (
+    <>
+      <DocketTable
+        dockets={data.dockets.slice(start, start + DOCKETS_PER_PAGE)}
+      />
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        pageHref={(p) =>
+          truckHref(data.truck.id, search, { page: p === 1 ? null : String(p) })
+        }
+      />
+    </>
+  );
 }
 
 async function TruckStats({ result }: { result: Promise<TruckResult> }) {
@@ -341,25 +368,16 @@ async function TruckDocuments({
   }
 
   return (
-    <>
-      <nav
-        aria-label="Document sections"
-        className="mb-3 flex gap-1 border-b border-neutral-200"
-      >
-        {(["truck", "trailer"] as const).map((section) => (
-          <Link
-            key={section}
-            href={truckHref(truck.id, search, {
-              tab: "documents",
-              docs: section,
-            })}
-            aria-current={section === docsTab ? "page" : undefined}
-            className={`${tabClass(section === docsTab)} capitalize`}
-          >
-            {section}
-          </Link>
-        ))}
-      </nav>
+    <TabNav
+      label="Document sections"
+      className="mb-3"
+      tabs={(["truck", "trailer"] as const).map((section) => ({
+        href: truckHref(truck.id, search, { tab: "documents", docs: section }),
+        label: section === "truck" ? "Truck" : "Trailer",
+        current: section === docsTab,
+        fallback: <TruckDocumentsSkeleton />,
+      }))}
+    >
       {docsTab === "trailer" ? (
         <div className="space-y-3">
           <TrailerCard truckId={truck.id} trailer={details.trailer} />
@@ -373,6 +391,6 @@ async function TruckDocuments({
       ) : (
         <DocumentTable slots={details.truckDocuments} owner={truckOwner} />
       )}
-    </>
+    </TabNav>
   );
 }
