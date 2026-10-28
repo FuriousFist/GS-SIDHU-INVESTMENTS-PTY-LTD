@@ -43,7 +43,7 @@ async function OverviewResults({ from, to }: { from: string; to: string }) {
     totalAggregatesTonnes,
     activeTrucks,
     recentDockets,
-    turnaround,
+    siteStats,
   } = await getOverviewData(from, to);
 
   return (
@@ -61,12 +61,8 @@ async function OverviewResults({ from, to }: { from: string; to: string }) {
         <StatTile label="Active trucks" value={activeTrucks.toString()} />
         <StatTile
           label="Avg. time on site"
-          value={formatMinutes(turnaround?.avg_site_minutes ?? null)}
-          caption={
-            turnaround
-              ? `Based on ${turnaround.timed_docket_count} of ${turnaround.docket_count} dockets`
-              : undefined
-          }
+          value={formatMinutes(siteStats.avg)}
+          caption={`Based on ${siteStats.count} of ${totalDockets} dockets`}
         />
       </div>
 
