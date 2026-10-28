@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { loadOwnerSlots } from "@/lib/queries/documents";
+import { fetchAllRows } from "@/lib/queries/fetch-all";
 
 export async function getTruckSummary(from: string, to: string) {
   const supabase = await createClient();
@@ -37,19 +38,24 @@ export async function getTruckDockets(
     return { truck, dockets: [] };
   }
 
-  const { data: dockets, error: docketsError } = await supabase
-    .from("docket_summary")
-    .select("*")
-    .eq("truck_number", truck.truck_number)
-    .gte("docket_date", from)
-    .lte("docket_date", to)
-    .order("docket_date", { ascending: false });
+  const { data: dockets, error: docketsError } = await fetchAllRows(
+    (start, end) =>
+      supabase
+        .from("docket_summary")
+        .select("*")
+        .eq("truck_number", truck.truck_number!)
+        .gte("docket_date", from)
+        .lte("docket_date", to)
+        .order("docket_date", { ascending: false })
+        .order("id")
+        .range(start, end)
+  );
 
   if (docketsError) {
     throw new Error(`Failed to load truck dockets: ${docketsError.message}`);
   }
 
-  return { truck, dockets: dockets ?? [] };
+  return { truck, dockets };
 }
 
 /**

@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { resolveDateRange, type SearchParams } from "@/lib/utils/date-range";
 import { getTruckCompliance, getTruckDockets } from "@/lib/queries/trucks";
+import { average } from "@/lib/queries/turnaround";
 import { DateRangeFilter } from "@/components/date-range-filter";
 import { StatTile } from "@/components/stat-tile";
 import { DocketTable } from "@/components/dockets/docket-table";
@@ -60,11 +61,6 @@ function truckHref(
   }
   const qs = query.toString();
   return `/trucks/${truckId}${qs ? `?${qs}` : ""}`;
-}
-
-function average(values: number[]) {
-  if (values.length === 0) return null;
-  return values.reduce((sum, v) => sum + v, 0) / values.length;
 }
 
 function firstParam(value: string | string[] | undefined) {

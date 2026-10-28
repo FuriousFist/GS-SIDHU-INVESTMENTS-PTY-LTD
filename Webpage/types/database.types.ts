@@ -482,16 +482,6 @@ export type Database = {
       }
     }
     Functions: {
-      get_customer_summary: {
-        Args: { date_from: string; date_to: string }
-        Returns: {
-          customer_name: string
-          docket_count: number
-          last_docket_date: string
-          total_aggregates_tonnes: number
-          total_concrete_m3: number
-        }[]
-      }
       get_daily_volume: {
         Args: { date_from: string; date_to: string }
         Returns: {
@@ -500,16 +490,6 @@ export type Database = {
           load_count: number
           total_quantity: number
           unit: string
-        }[]
-      }
-      get_plant_summary: {
-        Args: { date_from: string; date_to: string }
-        Returns: {
-          docket_count: number
-          last_docket_date: string
-          plant_name: string
-          total_aggregates_tonnes: number
-          total_concrete_m3: number
         }[]
       }
       get_truck_summary: {
@@ -522,15 +502,6 @@ export type Database = {
           total_concrete_m3: number
           truck_id: string
           truck_number: string
-        }[]
-      }
-      get_turnaround_stats: {
-        Args: { date_from: string; date_to: string }
-        Returns: {
-          avg_site_minutes: number
-          docket_count: number
-          median_site_minutes: number
-          timed_docket_count: number
         }[]
       }
     }

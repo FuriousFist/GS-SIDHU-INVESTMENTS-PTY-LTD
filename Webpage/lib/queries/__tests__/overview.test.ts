@@ -20,8 +20,8 @@ describe("getOverviewData", () => {
     supabase.from.mockReturnValueOnce(
       makeQueryBuilder({
         data: [
-          { docket_type: "concrete", total_m3: 7, total_tonnes: null, truck_number: "101" },
-          { docket_type: "concrete", total_m3: 5, total_tonnes: null, truck_number: "101" },
+          { docket_type: "concrete", total_m3: 7, total_tonnes: null, truck_number: "101", total_time_on_site: "00:40:00" },
+          { docket_type: "concrete", total_m3: 5, total_tonnes: null, truck_number: "101", total_time_on_site: "01:00:00" },
           { docket_type: "aggregates", total_m3: null, total_tonnes: 30, truck_number: "202" },
           { docket_type: "aggregates", total_m3: null, total_tonnes: null, truck_number: null },
         ],
@@ -31,10 +31,6 @@ describe("getOverviewData", () => {
     supabase.from.mockReturnValueOnce(
       makeQueryBuilder({ data: [{ id: "recent-1" }], error: null })
     );
-    supabase.rpc.mockReturnValue(
-      makeQueryBuilder({ data: { avg_site_minutes: 42 }, error: null })
-    );
-
     const result = await getOverviewData("2026-08-01", "2026-08-31");
 
     expect(result.totalDockets).toBe(4);
@@ -43,14 +39,13 @@ describe("getOverviewData", () => {
     // Distinct, non-null truck numbers only: "101" and "202".
     expect(result.activeTrucks).toBe(2);
     expect(result.recentDockets).toEqual([{ id: "recent-1" }]);
-    expect(result.turnaround).toEqual({ avg_site_minutes: 42 });
+    // Only the two dockets with a time on site count towards the average.
+    expect(result.siteStats).toEqual({ count: 2, avg: 50 });
   });
 
   test("empty data set returns zeroed totals, not an error", async () => {
     supabase.from.mockReturnValueOnce(makeQueryBuilder({ data: [], error: null }));
     supabase.from.mockReturnValueOnce(makeQueryBuilder({ data: [], error: null }));
-    supabase.rpc.mockReturnValue(makeQueryBuilder({ data: null, error: null }));
-
     const result = await getOverviewData("2026-08-01", "2026-08-31");
 
     expect(result).toMatchObject({
@@ -69,18 +64,6 @@ describe("getOverviewData", () => {
 
     await expect(getOverviewData("2026-08-01", "2026-08-31")).rejects.toThrow(
       "Failed to load overview data: db down"
-    );
-  });
-
-  test("throws when the turnaround rpc errors", async () => {
-    supabase.from.mockReturnValueOnce(makeQueryBuilder({ data: [], error: null }));
-    supabase.from.mockReturnValueOnce(makeQueryBuilder({ data: [], error: null }));
-    supabase.rpc.mockReturnValue(
-      makeQueryBuilder({ error: { message: "rpc failed" } })
-    );
-
-    await expect(getOverviewData("2026-08-01", "2026-08-31")).rejects.toThrow(
-      "Failed to load turnaround stats: rpc failed"
     );
   });
 });

@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { fetchAllRows } from "@/lib/queries/fetch-all";
 import { parseIntervalMinutes } from "@/lib/utils/format";
 
 export type TimedDocket = {
@@ -20,7 +21,7 @@ function median(values: number[]) {
     : sorted[mid];
 }
 
-function average(values: number[]) {
+export function average(values: number[]) {
   if (values.length === 0) return null;
   return values.reduce((sum, v) => sum + v, 0) / values.length;
 }
@@ -28,19 +29,23 @@ function average(values: number[]) {
 export async function getTurnaroundData(from: string, to: string) {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .from("docket_summary")
-    .select(
-      "id, docket_number, docket_type, docket_date, truck_number, total_time_on_site, waiting_time"
-    )
-    .gte("docket_date", from)
-    .lte("docket_date", to);
+  const { data, error } = await fetchAllRows((start, end) =>
+    supabase
+      .from("docket_summary")
+      .select(
+        "id, docket_number, docket_type, docket_date, truck_number, total_time_on_site, waiting_time"
+      )
+      .gte("docket_date", from)
+      .lte("docket_date", to)
+      .order("id")
+      .range(start, end)
+  );
 
   if (error) {
     throw new Error(`Failed to load turnaround data: ${error.message}`);
   }
 
-  const dockets: TimedDocket[] = (data ?? [])
+  const dockets: TimedDocket[] = data
     .filter((d): d is typeof d & { id: string } => d.id !== null)
     .map((d) => ({
       id: d.id,
